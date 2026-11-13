@@ -49,10 +49,27 @@ export default async function HomePage() {
     ]);
 
   const rate = settings?.usdToTomanRate ?? 68500;
-  const heroNotice =
+  const heroBadge =
     locale === "fa"
-      ? settings?.heroNoticeFa ?? t.hero.badge
-      : settings?.heroNoticeEn ?? t.hero.badge;
+      ? settings?.heroBadgeFa || settings?.heroNoticeFa || t.hero.badge
+      : settings?.heroBadgeEn || settings?.heroNoticeEn || t.hero.badge;
+
+  const heroTitle =
+    locale === "fa"
+      ? settings?.heroTitleFa || t.hero.title
+      : settings?.heroTitleEn || t.hero.title;
+
+  const heroSubtitle =
+    locale === "fa"
+      ? settings?.heroSubtitleFa || t.hero.subtitle
+      : settings?.heroSubtitleEn || t.hero.subtitle;
+
+  const heroCtaText =
+    locale === "fa"
+      ? settings?.heroCtaTextFa || t.hero.ctaPrimary
+      : settings?.heroCtaTextEn || t.hero.ctaPrimary;
+
+  const heroCtaLink = settings?.heroCtaLink || "/store";
 
   const enrichedProducts = featuredProducts.map((p) => ({
     ...p,
@@ -108,23 +125,23 @@ export default async function HomePage() {
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1.5 text-xs font-semibold text-brand">
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>{heroNotice}</span>
+            <span>{heroBadge}</span>
           </div>
 
           <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-tight text-text sm:text-5xl">
-            {t.hero.title}
+            {heroTitle}
           </h1>
 
           <p className="mt-4 text-base leading-relaxed text-muted sm:text-lg">
-            {t.hero.subtitle}
+            {heroSubtitle}
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
-              href="/store"
+              href={heroCtaLink}
               className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-500"
             >
-              <span>{t.hero.ctaPrimary}</span>
+              <span>{heroCtaText}</span>
               <ArrowIcon className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link

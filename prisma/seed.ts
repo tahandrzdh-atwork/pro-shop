@@ -592,6 +592,92 @@ async function main() {
     },
   });
 
+  // 10. Default Custom Pages (About, Terms, Contact, FAQ)
+  const defaultPages = [
+    {
+      slug: "about",
+      titleFa: "درباره ما",
+      titleEn: "About Us",
+      isSystemPage: true,
+      showInFooter: true,
+      showInHeader: true,
+      seoTitle: "درباره دیجی‌ساب | مرجع تخصصی خرید اشتراک‌های دیجیتال بین‌المللی",
+      seoDescription: "آشنایی با تیم، اهداف، زیرساخت سرورهای مادر و ارزش‌های فروشگاه اینترنتی دیجی‌ساب.",
+      contentFa: `دیجی‌ساب به عنوان یکی از پیشگامان ارائه خدمات و اشتراک‌های بین‌المللی در ایران، با هدف حذف واسطه‌ها و اتصال مستقیم کاربران به وب‌سرویس‌های رسمی جهانی فعالیت می‌کند.
+
+### اهداف و چشم‌انداز ما
+- **اتصال مستقیم به سرورهای مادر:** حذف زمان انتظار و انجام ۱۰۰٪ اتوماتیک سفارشات در بستر API و شبکه بلاکچین TON.
+- **تضمین و گارانتی کامل:** پشتیبانی تخصصی در تمامی ایام هفته و تعویض بی‌قیدوشرط اکانت‌ها در صورت بروز مشکل.
+- **باشگاه مشتریان واقعی:** قدردانی از همراهی خریداران با سیستم کش‌بک نقدی، تخفیف‌های پلکانی و تبدیل امتیاز به موجودی کیف پول.`,
+      contentEn: `DigiSub is an advanced e-commerce platform offering direct upstream integration for global digital subscriptions, Telegram TON Fragment services, and AI developer licenses.`,
+    },
+    {
+      slug: "terms",
+      titleFa: "قوانین و مقررات",
+      titleEn: "Terms & Conditions",
+      isSystemPage: true,
+      showInFooter: true,
+      showInHeader: false,
+      seoTitle: "قوانین و مقررات خرید و حریم خصوصی کاربران | دیجی‌ساب",
+      seoDescription: "شرایط استفاده از خدمات، نحوه استفاده از گارانتی، بازگشت وجه و تعهدات فروشگاه.",
+      contentFa: `استفاده از خدمات دیجی‌ساب به منزله پذیرش کامل قوانین و مقررات زیر می‌باشد:
+
+### ۱. حریم خصوصی و امنیت حساب‌ها
+- در خدمات نیازمند آیدی (مانند تلگرام پرمیوم و استارز)، هرگز رمز عبور یا کدهای پیامکی خصوصی اکانت خود را به هیچ فردی ارائه ندهید. فعال‌سازی تنها با Username عمومی انجام می‌شود.
+- در اکانت‌های پیش‌ساخته، تغییر ایمیل اولیه یا نقض قوانین سرویس‌دهنده بین‌المللی موجب ابطال گارانتی خواهد شد.
+
+### ۲. شرایط گارانتی و عودت وجه
+- تمامی اشتراک‌ها در طول دوره خریداری‌شده دارای ضمانت کارکرد هستند.
+- در صورت بروز هرگونه قطعی، کاربر می‌تواند از طریق پنل کاربری گزینه «درخواست گارانتی و تعویض» را ثبت نماید تا در کمتر از ۲ ساعت رسیدگی شود.
+- شماره‌های مجازی در صورت عدم دریافت پیامک طی مهلت مقرر، قابلیت لغو آنی و بازگشت ۱۰۰٪ مبلغ به کیف پول را دارا می‌باشند.`,
+      contentEn: `Terms of service and privacy guarantees for purchasing digital subscriptions on DigiSub.`,
+    },
+    {
+      slug: "contact",
+      titleFa: "تماس با ما",
+      titleEn: "Contact Us",
+      isSystemPage: true,
+      showInFooter: true,
+      showInHeader: false,
+      seoTitle: "تماس با ما و راه‌های ارتباطی با پشتیبانی | دیجی‌ساب",
+      seoDescription: "راه‌های ارتباط با کارشناسان پشتیبانی، آدرس، تلفن و شبکه‌های اجتماعی دیجی‌ساب.",
+      contentFa: `تیم پشتیبانی دیجی‌ساب در ۷ روز هفته آماده پاسخگویی به سوالات و راهنمایی شماست:
+
+### کانال‌های ارتباطی:
+- **تلفن تماس پشتیبانی:** ۰۲۱-۹۱۰۰۰۰۰۰ (ساعات کاری ۹ الی ۲۱)
+- **پشتیبانی تلگرام:** @DigiSubSupport (پاسخگویی سریع ۲۴ ساعته)
+- **پیام‌رسان اختصاصی:** ثبت تیکت پشتیبانی در پنل کاربری
+- **آدرس دفتر مرکزی:** تهران، خیابان ولیعصر، برج فناوری دیجی‌ساب`,
+      contentEn: `Contact DigiSub support team via live chat, Telegram, phone, or dashboard tickets.`,
+    },
+    {
+      slug: "faq",
+      titleFa: "راهنمای خرید و سوالات متداول",
+      titleEn: "FAQ & Buying Guide",
+      isSystemPage: true,
+      showInFooter: true,
+      showInHeader: false,
+      seoTitle: "راهنمای جامع خرید اشتراک و سوالات متداول | دیجی‌ساب",
+      seoDescription: "پاسخ به سوالات متداول درباره نحوه پرداخت، فعال‌سازی، شارژ کیف پول و تحویل اکانت‌ها.",
+      contentFa: `پرتکرارترین سوالات کاربران پیش از خرید:
+
+### چگونه می‌توانم تلگرام پرمیوم بخرم؟
+کافی است وارد صفحه محصول شده، پلن مورد نظر (۳، ۶ یا ۱۲ ماهه) را انتخاب کنید و آیدی تلگرام خود را بدون @ وارد نمایید. پس از پرداخت، اشتراک طی ۱ الی ۳ دقیقه فعال می‌شود.
+
+### تفاوت پرداخت با درگاه و کیف پول چیست؟
+با شارژ کیف پول حساب خود، خریدها بدون نیاز به رفتن به درگاه بانکی در ۱ ثانیه انجام می‌شوند و علاوه بر آن کش‌بک‌های وفاداری مستقیماً به کیف پول شما واریز می‌گردد.`,
+      contentEn: `Frequently asked questions and step-by-step buying guide for digital subscriptions.`,
+    },
+  ];
+
+  for (const page of defaultPages) {
+    await prisma.customPage.upsert({
+      where: { slug: page.slug },
+      update: {},
+      create: page,
+    });
+  }
+
   console.log("Seed completed successfully with Callinoo & Altivox AI providers!");
 }
 

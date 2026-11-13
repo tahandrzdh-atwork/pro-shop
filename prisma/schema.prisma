@@ -371,7 +371,47 @@ model SiteSetting {
   heroNoticeEn        String   @default("Instant delivery for Telegram Premium, Stars & AI subscriptions via direct API")
   pointsPer10kToman   Int      @default(5)
   referralBonusPoints Int      @default(100)
+
+  // Custom Homepage & Hero Customizer
+  heroTitleFa         String?  @default("فروشگاه هوشمند اشتراک و اکانت‌های دیجیتال بین‌المللی")
+  heroTitleEn         String?  @default("Smart Platform for Digital Subscriptions & Accounts")
+  heroSubtitleFa      String?  @default("تحویل آنی تلگرام پرمیوم و استارز از شبکه فرگمنت TON، شماره مجازی اختصاصی و فعال‌سازی اکانت‌های هوش مصنوعی با گارانتی کامل و تخفیف باشگاه مشتریان")
+  heroSubtitleEn      String?  @default("Instant delivery for Telegram Premium, Stars via TON Fragment, Virtual Numbers & AI licenses with full warranty.")
+  heroCtaTextFa       String?  @default("مشاهده و خرید اشتراک‌ها")
+  heroCtaTextEn       String?  @default("Browse Subscriptions")
+  heroCtaLink         String?  @default("/store")
+  heroBadgeFa         String?  @default("تحویل ۱۰۰٪ اتوماتیک و اتصال مستقیم سرور مادر")
+  heroBadgeEn         String?  @default("100% Automated Instant Fulfillment")
+
+  // Announcement Bar (Header top notification)
+  announcementActive  Boolean  @default(true)
+  announcementTextFa  String?  @default("🔥 تخفیف ویژه ۱۵ درصدی برای اولین خرید شما با کد تخفیف WELCOME15")
+  announcementTextEn  String?  @default("🔥 15% Welcome discount on your first order with coupon WELCOME15")
+  announcementLink    String?  @default("/store")
+
+  // Social & Contact Details
+  supportPhone        String?  @default("021-91000000")
+  supportTelegram     String?  @default("DigiSubSupport")
+  supportInstagram    String?  @default("digisub_store")
+
   updatedAt           DateTime @updatedAt
+}
+
+model CustomPage {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  titleFa        String
+  titleEn        String
+  contentFa      String
+  contentEn      String
+  isSystemPage   Boolean  @default(false)
+  showInFooter   Boolean  @default(true)
+  showInHeader   Boolean  @default(false)
+  seoTitle       String?
+  seoDescription String?
+  published      Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Article {

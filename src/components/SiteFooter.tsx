@@ -56,6 +56,26 @@ export function SiteFooter() {
                     {t.nav.club}
                   </Link>
                 </li>
+                <li>
+                  <Link href="/page/about" className="hover:text-brand">
+                    {locale === "fa" ? "درباره ما" : "About Us"}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/page/terms" className="hover:text-brand">
+                    {locale === "fa" ? "قوانین و مقررات" : "Terms & Privacy"}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/page/contact" className="hover:text-brand">
+                    {locale === "fa" ? "تماس با ما" : "Contact Us"}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/page/faq" className="hover:text-brand">
+                    {locale === "fa" ? "سوالات متداول" : "FAQ"}
+                  </Link>
+                </li>
               </ul>
             </div>
             <div className="space-y-2">

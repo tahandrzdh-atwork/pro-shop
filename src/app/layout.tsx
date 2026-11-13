@@ -7,6 +7,8 @@ import { isRtl, Locale } from "@/lib/i18n";
 import { AppProvider } from "@/components/AppProvider";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { AnnouncementBar } from "@/components/AnnouncementBar";
+import { prisma } from "@/lib/prisma";
 
 const vazirmatn = Vazirmatn({
   variable: "--font-vazirmatn",
@@ -40,7 +42,10 @@ export default async function RootLayout({
   const localeCookie = cookieStore.get("digisub_locale")?.value;
   const locale: Locale = localeCookie === "en" ? "en" : "fa";
 
-  const rawUser = await getCurrentUser();
+  const [rawUser, settings] = await Promise.all([
+    getCurrentUser(),
+    prisma.siteSetting.findUnique({ where: { id: "default" } }).catch(() => null),
+  ]);
   const tier = rawUser ? await getUserTier(rawUser.loyaltyPoints) : null;
   const initialUser = rawUser
     ? {
@@ -75,6 +80,12 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <AppProvider initialLocale={locale} initialUser={initialUser}>
+          <AnnouncementBar
+            active={settings?.announcementActive}
+            textFa={settings?.announcementTextFa}
+            textEn={settings?.announcementTextEn}
+            link={settings?.announcementLink}
+          />
           <SiteHeader />
           <main className="flex-1">{children}</main>
           <SiteFooter />
