@@ -22,10 +22,12 @@ A full-stack, bilingual (**Persian RTL / English LTR**, user-selectable) e-comme
   - **Local Dev Sandbox** (logs & displays OTP safely for zero-cost testing)
 
 ### ⚡ Automated Fulfillment & Upstream Mother Server API Engine
-- **3 Fulfillment Modes per Product/Plan:**
+- **Multiple Fulfillment Modes per Product/Plan:**
   1. **Digital Vault (`VAULT`)**: Atomically claims encrypted/stored credentials from inventory immediately upon payment.
-  2. **Upstream Mother Server (`UPSTREAM_API`)**: Dispatches orders directly to external APIs (`SMM_PANEL`, `FRAGMENT_API`, `CUSTOM_REST`) with full request/response logging and one-click retry.
-  3. **Concierge Manual (`MANUAL`)**: Queues personal-account upgrades for admin delivery with instant SMS + in-app notification.
+  2. **Callinoo / Ozvinoo Virtual Numbers (`OZVINOO_CALLINOO`)**: Real-time virtual phone number purchase across 150+ countries for Telegram/WhatsApp, with live SMS OTP polling in user panel and 1-click cancellation with wallet refund.
+  3. **Altivox AI Partner API (`ALTIVOX_AI`)**: Direct integration with Altivox AI internal source for automated provisioning of Google Gemini Pro 18M and AI licenses.
+  4. **Mother Server SMM Panels (`SMM_PANEL`)**: Dispatches orders directly to external SMM and Fragment APIs with full request/response logging and one-click retry.
+  5. **Concierge Manual (`MANUAL`)**: Queues personal-account upgrades for admin delivery with instant SMS + in-app notification.
 
 ### 🏆 Loyalty Club & 360° CRM
 - **Customer Club**: Tier progression (**Bronze → Silver → Gold → Diamond VIP**) unlocking automatic checkout discounts and wallet cashback, referral rewards, and point-to-wallet redemption.
