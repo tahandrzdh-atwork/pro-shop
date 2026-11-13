@@ -188,6 +188,20 @@ model OrderItem {
   virtualStatus        String? // WAITING_CODE | CODE_RECEIVED | CANCELED | EXPIRED
   expiresAt            DateTime?
   reminderSent         Boolean           @default(false)
+
+  // Gift Order Fields
+  isGift               Boolean           @default(false)
+  giftRecipientName    String?
+  giftMessage          String?
+  giftCode             String?           @unique
+
+  // Warranty & Replacement Claim Fields
+  warrantyUntil        DateTime?
+  warrantyStatus       String?           // NONE | CLAIMED | REPLACED | REJECTED
+  warrantyClaimReason  String?
+  warrantyClaimDate    DateTime?
+  replacementSecret    String?
+
   createdAt            DateTime          @default(now())
 
   vaultItem DigitalVaultItem?

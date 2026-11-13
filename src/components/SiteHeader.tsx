@@ -34,6 +34,7 @@ export function SiteHeader() {
     { href: "/", label: t.nav.home },
     { href: "/store", label: t.nav.store },
     { href: "/blog", label: locale === "fa" ? "مقالات و آموزش" : "Blog" },
+    { href: "/status", label: locale === "fa" ? "وضعیت سرورها" : "Status" },
     { href: "/panel?tab=club", label: t.nav.club },
     { href: "/panel?tab=tickets", label: t.nav.support },
   ];

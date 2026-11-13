@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Package,
@@ -20,6 +20,12 @@ import {
   RefreshCw,
   AlertCircle,
   PhoneCall,
+  Gift,
+  ShieldCheck,
+  RotateCcw,
+  Share2,
+  ExternalLink,
+  AlertTriangle,
 } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from "@/lib/i18n";
@@ -85,6 +91,14 @@ interface DashboardData {
       virtualSmsCode?: string | null;
       virtualRequestId?: string | null;
       virtualStatus?: string | null;
+      isGift?: boolean;
+      giftRecipientName?: string | null;
+      giftMessage?: string | null;
+      giftCode?: string | null;
+      warrantyUntil?: string | null;
+      warrantyStatus?: string | null;
+      warrantyClaimReason?: string | null;
+      replacementSecret?: string | null;
     }>;
   }>;
   transactions: Array<{
@@ -120,9 +134,10 @@ interface DashboardData {
 }
 
 function UserPanelContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get("tab") as TabKey) || "overview";
-  const { locale, t, user: authUser, refreshUser } = useApp();
+  const { locale, t, user: authUser, refreshUser, addToCart } = useApp();
 
   const [tab, setTab] = useState<TabKey>(initialTab);
   const [data, setData] = useState<DashboardData | null>(null);
@@ -140,6 +155,12 @@ function UserPanelContent() {
   const [feedback, setFeedback] = useState("");
   const [checkingVirtualId, setCheckingVirtualId] = useState<string | null>(null);
   const [cancelingVirtualId, setCancelingVirtualId] = useState<string | null>(null);
+
+  // Warranty & Renewal States
+  const [renewingItemId, setRenewingItemId] = useState<string | null>(null);
+  const [warrantyModalItem, setWarrantyModalItem] = useState<any | null>(null);
+  const [warrantyReason, setWarrantyReason] = useState("قطع دسترسی و پریدن اشتراک");
+  const [submittingWarranty, setSubmittingWarranty] = useState(false);
 
   useEffect(() => {
     const paramTab = searchParams.get("tab") as TabKey | null;
@@ -335,6 +356,62 @@ function UserPanelContent() {
       setFeedback(err?.message || "خطای ارتباط با سرور");
     } finally {
       setCancelingVirtualId(null);
+    }
+  };
+
+  const handleRenew = async (orderItemId: string) => {
+    setRenewingItemId(orderItemId);
+    setFeedback("");
+    try {
+      const res = await fetch("/api/user/orders/renew", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderItemId }),
+      });
+      const json = await res.json();
+      if (res.ok && json.renewalData) {
+        addToCart(json.renewalData);
+        router.push("/cart");
+      } else {
+        setFeedback(json.error || "خطا در تمدید اشتراک");
+      }
+    } catch {
+      setFeedback("خطا در تمدید اشتراک");
+    } finally {
+      setRenewingItemId(null);
+    }
+  };
+
+  const handleSubmitWarranty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!warrantyModalItem) return;
+    setSubmittingWarranty(true);
+    setFeedback("");
+    try {
+      const res = await fetch("/api/user/orders/warranty", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderItemId: warrantyModalItem.id,
+          reason: warrantyReason,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setFeedback(
+          json.autoReplaced
+            ? `🎉 ${json.message}`
+            : `🛡️ ${json.message}`
+        );
+        setWarrantyModalItem(null);
+        await fetchDashboard();
+      } else {
+        setFeedback(json.error || "خطا در ثبت درخواست گارانتی");
+      }
+    } catch {
+      setFeedback("خطا در برقراری ارتباط");
+    } finally {
+      setSubmittingWarranty(false);
     }
   };
 
@@ -710,6 +787,90 @@ function UserPanelContent() {
                             )}
                           </div>
                         )}
+                        {/* Digital Gift Card Box */}
+                        {item.isGift && item.giftCode && (
+                          <div className="mt-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2.5">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+                                <Gift className="h-4 w-4" />
+                                {locale === "fa"
+                                  ? `این اشتراک به عنوان هدیه برای «${item.giftRecipientName || "دوست شما"}» ثبت شده است`
+                                  : `Gift subscription for ${item.giftRecipientName || "Recipient"}`}
+                              </span>
+                              <Link
+                                href={`/gift/${item.giftCode}`}
+                                target="_blank"
+                                className="inline-flex items-center gap-1 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-amber-600"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                {locale === "fa" ? "مشاهده کارت هدیه" : "Open Gift Card"}
+                              </Link>
+                            </div>
+                            {item.giftMessage && (
+                              <p className="text-[11px] text-muted italic">
+                                «{item.giftMessage}»
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Warranty & Guarantee / Replacement Box */}
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/80 bg-surface p-3 text-xs">
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+                            <div>
+                              {item.warrantyStatus === "REPLACED" ? (
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                  {locale === "fa" ? "✅ اکانت جایگزین گارانتی تحویل داده شد" : "Warranty replacement issued"}
+                                </span>
+                              ) : item.warrantyStatus === "CLAIMED" ? (
+                                <span className="font-bold text-amber-500 animate-pulse">
+                                  {locale === "fa" ? "⏳ درخواست گارانتی و تعویض در حال بررسی فوری" : "Warranty claim under review"}
+                                </span>
+                              ) : item.warrantyUntil && new Date(item.warrantyUntil) > new Date() ? (
+                                <span className="text-muted">
+                                  {locale === "fa" ? "ضمانت و گارانتی فعال تا:" : "Warranty active until:"}{" "}
+                                  <strong className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                    {formatDate(item.warrantyUntil, locale)}
+                                  </strong>
+                                </span>
+                              ) : (
+                                <span className="text-muted">
+                                  {locale === "fa" ? "دوره گارانتی به پایان رسیده است" : "Warranty expired"}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* Warranty Claim Button */}
+                            {(!item.warrantyStatus || item.warrantyStatus === "NONE") &&
+                              item.warrantyUntil &&
+                              new Date(item.warrantyUntil) > new Date() && (
+                                <button
+                                  type="button"
+                                  onClick={() => setWarrantyModalItem(item)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+                                >
+                                  <AlertTriangle className="h-3 w-3" />
+                                  {locale === "fa" ? "درخواست گارانتی و تعویض" : "Claim Warranty"}
+                                </button>
+                              )}
+
+                            {/* 1-Click Fast Renewal Button */}
+                            <button
+                              type="button"
+                              disabled={renewingItemId === item.id}
+                              onClick={() => handleRenew(item.id)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                              <RotateCcw className={`h-3 w-3 ${renewingItemId === item.id ? "animate-spin" : ""}`} />
+                              {renewingItemId === item.id
+                                ? (locale === "fa" ? "در حال آماده‌سازی..." : "Renewing...")
+                                : (locale === "fa" ? "تمدید سریع اشتراک" : "1-Click Renew")}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
@@ -1052,6 +1213,80 @@ function UserPanelContent() {
           )}
         </div>
       </div>
+
+      {/* Warranty Claim Modal Dialog */}
+      {warrantyModalItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <form
+            onSubmit={handleSubmitWarranty}
+            className="w-full max-w-md rounded-3xl border border-border bg-surface p-6 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2 font-bold text-text">
+                <ShieldCheck className="h-5 w-5 text-emerald-500" />
+                <h3>{locale === "fa" ? "ثبت درخواست گارانتی و تعویض" : "Claim Warranty Replacement"}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWarrantyModalItem(null)}
+                className="text-muted hover:text-text text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-xs text-muted">
+                {locale === "fa"
+                  ? `محصول: ${warrantyModalItem.productTitleFa} (${warrantyModalItem.planTitleFa})`
+                  : `Product: ${warrantyModalItem.productTitleEn}`}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-text block">
+                {locale === "fa" ? "دلیل قطعی یا مشکل اشتراک *" : "Issue Reason *"}
+              </label>
+              <select
+                value={warrantyReason}
+                onChange={(e) => setWarrantyReason(e.target.value)}
+                className="w-full rounded-xl border border-border bg-surface-2 p-2.5 text-xs font-semibold text-text"
+              >
+                <option value="قطع دسترسی و پریدن اشتراک">قطع دسترسی و پریدن اشتراک</option>
+                <option value="تغییر رمز عبور یا خطا در لاگین">تغییر رمز عبور یا خطا در لاگین</option>
+                <option value="انقضای زودهنگام قبل از موعد">انقضای زودهنگام قبل از موعد</option>
+                <option value="محدودیت تعداد دستگاه یا لاگین">محدودیت تعداد دستگاه یا لاگین</option>
+                <option value="سایر موارد فنی">سایر موارد فنی</option>
+              </select>
+            </div>
+
+            <p className="rounded-xl bg-indigo-500/10 p-3 text-[11px] leading-relaxed text-brand">
+              {locale === "fa"
+                ? "💡 در صورتی که این محصول دارای موجودی انبار باشد، اکانت جایگزین به صورت آنی و خودکار تحویل داده خواهد شد. در غیر این صورت کارشناسان ما ظرف کمتر از ۲ ساعت نسبت به حل مشکل اقدام می‌کنند."
+                : "If inventory has available stock, a replacement key will be automatically issued immediately."}
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setWarrantyModalItem(null)}
+                className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-text hover:bg-surface-2"
+              >
+                {locale === "fa" ? "انصراف" : "Cancel"}
+              </button>
+              <button
+                type="submit"
+                disabled={submittingWarranty}
+                className="rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {submittingWarranty
+                  ? (locale === "fa" ? "در حال ثبت..." : "Submitting...")
+                  : (locale === "fa" ? "ثبت ادعای گارانتی" : "Submit Claim")}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

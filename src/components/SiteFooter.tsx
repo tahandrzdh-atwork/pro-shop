@@ -36,6 +36,17 @@ export function SiteFooter() {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/blog" className="hover:text-brand">
+                    {locale === "fa" ? "وبلاگ و مقالات سئو" : "Blog"}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/status" className="hover:text-brand inline-flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    {locale === "fa" ? "وضعیت سرورها (Status)" : "Service Status"}
+                  </Link>
+                </li>
+                <li>
                   <Link href="/panel" className="hover:text-brand">
                     {t.nav.panel}
                   </Link>

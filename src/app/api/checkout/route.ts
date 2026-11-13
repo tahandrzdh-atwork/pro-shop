@@ -62,6 +62,10 @@ export async function POST(req: Request) {
       totalPriceToman: number;
       deliveryType: string;
       customerInputsJson: string;
+      isGift?: boolean;
+      giftRecipientName?: string | null;
+      giftMessage?: string | null;
+      giftCode?: string | null;
     }> = [];
 
     for (const item of items) {
@@ -83,6 +87,10 @@ export async function POST(req: Request) {
         totalPriceToman: lineTotal,
         deliveryType: plan.product.deliveryType,
         customerInputsJson: JSON.stringify(item.customerInputs ?? {}),
+        isGift: Boolean(body?.isGift),
+        giftRecipientName: body?.giftRecipientName ? String(body.giftRecipientName).trim() : null,
+        giftMessage: body?.giftMessage ? String(body.giftMessage).trim() : null,
+        giftCode: body?.isGift ? `GIFT-${Math.random().toString(36).slice(2, 8).toUpperCase()}` : null,
       });
     }
 

@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   ArrowLeft,
   ArrowRight,
+  Gift,
 } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import { formatCurrency, formatNumber } from "@/lib/i18n";
@@ -34,6 +35,9 @@ export default function CartPage() {
   const [paymentMethod, setPaymentMethod] = useState<"GATEWAY" | "WALLET">("GATEWAY");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [isGift, setIsGift] = useState(false);
+  const [giftRecipientName, setGiftRecipientName] = useState("");
+  const [giftMessage, setGiftMessage] = useState("");
   const [completedOrder, setCompletedOrder] = useState<{
     orderNumber: string;
     status: string;
@@ -88,6 +92,9 @@ export default function CartPage() {
         body: JSON.stringify({
           paymentMethod,
           couponCode: appliedCoupon,
+          isGift,
+          giftRecipientName,
+          giftMessage,
           items: cart.map((c) => ({
             planId: c.planId,
             quantity: c.quantity,
@@ -288,6 +295,59 @@ export default function CartPage() {
                 <span>{t.cart.payable}</span>
                 <span>{formatCurrency(payable, locale)}</span>
               </div>
+            </div>
+
+            {/* Gift Order Toggle Card */}
+            <div className="mt-5 rounded-2xl border border-amber-500/30 bg-amber-500/8 p-4 space-y-3">
+              <label className="flex cursor-pointer items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Gift className="h-4 w-4 text-amber-500" />
+                  <span className="text-xs font-bold text-text">
+                    {locale === "fa" ? "این سفارش هدیه است (کارت پستال دیجیتال)" : "Send as a Gift"}
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isGift}
+                  onChange={(e) => setIsGift(e.target.checked)}
+                  className="h-4 w-4"
+                />
+              </label>
+
+              {isGift && (
+                <div className="space-y-2 pt-2 border-t border-amber-500/20">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-text mb-1">
+                      {locale === "fa" ? "نام یا لقب دریافت‌کننده کادو *" : "Recipient Name *"}
+                    </label>
+                    <input
+                      type="text"
+                      required={isGift}
+                      value={giftRecipientName}
+                      onChange={(e) => setGiftRecipientName(e.target.value)}
+                      placeholder={locale === "fa" ? "مثال: علی رضایی" : "e.g. Alex Smith"}
+                      className="w-full rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-text mb-1">
+                      {locale === "fa" ? "پیام تبریک اختصاصی فرستنده (اختیاری)" : "Custom Greeting Message"}
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={giftMessage}
+                      onChange={(e) => setGiftMessage(e.target.value)}
+                      placeholder={locale === "fa" ? "تولدت مبارک رفیق! اشتراک ۱ ساله تلگرام پرمیوم از طرف من." : "Happy Birthday! Enjoy your Telegram Premium."}
+                      className="w-full rounded-xl border border-border bg-surface p-2 text-xs text-text"
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted">
+                    {locale === "fa"
+                      ? "💡 پس از خرید، یک لینک کارت تبریک اختصاصی متحرک با افکت کادو دریافت می‌کنید که می‌توانید برای دوستتان بفرستید."
+                      : "You will receive an interactive digital gift card link with unboxing animation to share with the recipient."}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Payment Method */}

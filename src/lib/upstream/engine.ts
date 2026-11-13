@@ -912,6 +912,7 @@ export async function fulfillOrderAfterPayment(orderId: string) {
     const expiresAt = item.plan.durationDays
       ? new Date(Date.now() + item.plan.durationDays * 24 * 60 * 60 * 1000)
       : null;
+    const warrantyUntil = expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     totalPointsEarned += item.plan.pointsReward * item.quantity;
 
@@ -940,6 +941,8 @@ export async function fulfillOrderAfterPayment(orderId: string) {
               deliveredSecret: secrets,
               fulfillmentStatus: "DELIVERED",
               expiresAt,
+              warrantyUntil,
+              warrantyStatus: "NONE",
             },
           }),
         ]);
@@ -950,6 +953,8 @@ export async function fulfillOrderAfterPayment(orderId: string) {
           data: {
             fulfillmentStatus: "PROCESSING",
             expiresAt,
+            warrantyUntil,
+            warrantyStatus: "NONE",
           },
         });
         processingCount++;
@@ -979,6 +984,8 @@ export async function fulfillOrderAfterPayment(orderId: string) {
           virtualRequestId: dispatch.virtualRequestId ?? null,
           virtualStatus: dispatch.virtualNumber ? "WAITING_CODE" : null,
           expiresAt,
+          warrantyUntil,
+          warrantyStatus: "NONE",
         },
       });
 
@@ -991,6 +998,8 @@ export async function fulfillOrderAfterPayment(orderId: string) {
         data: {
           fulfillmentStatus: "PROCESSING",
           expiresAt,
+          warrantyUntil,
+          warrantyStatus: "NONE",
         },
       });
       processingCount++;
