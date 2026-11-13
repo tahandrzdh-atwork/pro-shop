@@ -224,7 +224,146 @@ export async function dispatchToUpstreamProvider(params: {
     }
   }
 
-  // 3. SMM PANEL & GENERIC REST
+  // 3. ROBYNHOOD TELEGRAM FRAGMENT API (Telegram Premium, Stars, TON)
+  if (provider.protocol === "ROBYNHOOD_FRAGMENT") {
+    const rawRecipient =
+      params.customerInputs.telegramUsername ||
+      params.customerInputs.recipient ||
+      params.customerInputs.username ||
+      targetInput;
+    const recipient = rawRecipient
+      .replace(/^@/, "")
+      .replace(/^https?:\/\/t\.me\//, "")
+      .trim();
+
+    let productType = "premium";
+    let months = "3";
+    let starsQty = String(params.quantity || 50);
+
+    const sLower = params.serviceId.toLowerCase();
+    if (sLower.includes("star") || sLower.startsWith("tg_stars")) {
+      productType = "stars";
+      if (sLower.includes("50") && !sLower.includes("500")) starsQty = "50";
+      else if (sLower.includes("100") && !sLower.includes("1000")) starsQty = "100";
+      else if (sLower.includes("250")) starsQty = "250";
+      else if (sLower.includes("500")) starsQty = "500";
+      else if (sLower.includes("1000")) starsQty = "1000";
+      else starsQty = String(params.quantity || 50);
+    } else if (sLower.includes("prem") || sLower.startsWith("tg_prem")) {
+      productType = "premium";
+      if (sLower.includes("12") || sLower.includes("1y") || sLower.includes("year")) months = "12";
+      else if (sLower.includes("6")) months = "6";
+      else months = "3";
+    }
+
+    const payload: Record<string, unknown> = {
+      product_type: productType,
+      recipient,
+      payment_method: "ton",
+      idempotency_key: params.orderItemId,
+    };
+    if (productType === "premium") {
+      payload.months = months;
+    } else if (productType === "stars") {
+      payload.quantity = starsQty;
+    }
+
+    if (provider.isSandbox) {
+      const fakeTxId = `TX-ROBYN-${Math.floor(100000 + Math.random() * 900000)}`;
+      const fakeTonHash = `fragment_ton_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+      const simResp = {
+        transaction_id: fakeTxId,
+        ton_tx_id: fakeTonHash,
+        status: "COMPLETED",
+        product_type: productType,
+        recipient: `@${recipient}`,
+        item_name: productType === "premium" ? `Telegram Premium ${months} Months` : `${starsQty} Telegram Stars`,
+        sandbox: true,
+      };
+
+      await prisma.upstreamApiLog.create({
+        data: {
+          providerId: provider.id,
+          orderItemId: params.orderItemId,
+          action: "SUBMIT_ORDER",
+          requestPayload: JSON.stringify(payload),
+          responseBody: JSON.stringify(simResp),
+          httpStatus: 200,
+          success: true,
+          durationMs: 45,
+        },
+      });
+
+      return {
+        success: true,
+        upstreamOrderId: fakeTxId,
+        deliveredSecret: `✅ فعال‌سازی آنی از فرگمنت تلگرام (Sandbox Mode)\nشناسه تراکنش: ${fakeTxId}\nهش بلاکچین TON: ${fakeTonHash}\nکاربر دریافت‌کننده: @${recipient}\nسرویس: ${simResp.item_name}`,
+        status: "DELIVERED",
+        rawResponse: JSON.stringify(simResp),
+      };
+    }
+
+    try {
+      const endpoint = `${provider.baseUrl.replace(/\/$/, "")}/api/purchase`;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": provider.apiKey,
+          "User-Agent": "DigiSub/1.0",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const text = await res.text();
+      const durationMs = Date.now() - startedAt;
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = { raw: text };
+      }
+
+      const ok =
+        res.ok &&
+        !parsed.error &&
+        (Boolean(parsed.transaction_id) || parsed.status === "COMPLETED" || parsed.status === "PENDING");
+      const txId = (parsed.transaction_id || parsed.id || `TX-${Date.now()}`) as string;
+      const tonHash = (parsed.ton_tx_id || "در حال ثبت روی بلاکچین TON") as string;
+
+      await prisma.upstreamApiLog.create({
+        data: {
+          providerId: provider.id,
+          orderItemId: params.orderItemId,
+          action: "SUBMIT_ORDER",
+          requestPayload: JSON.stringify(payload),
+          responseBody: text.slice(0, 4000),
+          httpStatus: res.status,
+          success: ok,
+          durationMs,
+        },
+      });
+
+      return {
+        success: ok,
+        upstreamOrderId: String(txId),
+        deliveredSecret: ok
+          ? `✅ فعال‌سازی فرگمنت تلگرام با موفقیت انجام شد\nشناسه تراکنش: ${txId}\nهش بلاکچین TON: ${tonHash}\nکاربر: @${recipient}\nسرویس: ${String(parsed.item_name || productType)}`
+          : undefined,
+        status: ok ? "DELIVERED" : "FAILED",
+        rawResponse: text.slice(0, 4000),
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Robynhood Fragment error";
+      return {
+        success: false,
+        status: "FAILED",
+        rawResponse: JSON.stringify({ error: msg }),
+      };
+    }
+  }
+
+  // 4. SMM PANEL & GENERIC REST
   const requestBody =
     provider.protocol === "SMM_PANEL"
       ? {
@@ -461,7 +600,49 @@ export async function testUpstreamConnection(providerId: string) {
     }
   }
 
-  // 3. Fallback Sandbox / SMM Panel
+  // 3. ROBYNHOOD TELEGRAM FRAGMENT API
+  if (provider.protocol === "ROBYNHOOD_FRAGMENT") {
+    try {
+      const url = `${provider.baseUrl.replace(/\/$/, "")}/api/balance`;
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": "DigiSub/1.0",
+          "X-API-Key": provider.apiKey,
+        },
+      });
+      const data = await res.json();
+      const ok = res.ok && data.mainnet_balance !== undefined;
+      const balance = ok
+        ? `${data.mainnet_balance} TON (تست‌نت: ${data.testnet_balance} TON)`
+        : "خطا در دریافت موجودی Fragment";
+
+      if (ok) {
+        await prisma.upstreamProvider.update({
+          where: { id: provider.id },
+          data: { balanceText: balance, lastSyncAt: new Date() },
+        });
+      }
+
+      await prisma.upstreamApiLog.create({
+        data: {
+          providerId: provider.id,
+          action: "TEST_CONNECTION",
+          requestPayload: JSON.stringify({ url }),
+          responseBody: JSON.stringify(data),
+          httpStatus: res.status,
+          success: ok,
+          durationMs: Date.now() - startedAt,
+        },
+      });
+
+      return { ok, balance, raw: JSON.stringify(data) };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Robynhood Fragment connection error";
+      return { ok: false, message: msg };
+    }
+  }
+
+  // 4. Fallback Sandbox / SMM Panel
   if (provider.isSandbox) {
     const balance = "$428.50 (Sandbox)";
     await prisma.upstreamProvider.update({
@@ -896,4 +1077,28 @@ export async function fulfillOrderAfterPayment(orderId: string) {
   });
 
   return updatedOrder;
+}
+
+export async function getRobynhoodPrices(provider: { baseUrl: string; apiKey: string }) {
+  try {
+    const url = `${provider.baseUrl.replace(/\/$/, "")}/api/prices/list`;
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "DigiSub/1.0",
+        "X-API-Key": provider.apiKey,
+      },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.prices || []) as Array<{
+      product_type: string;
+      item_name: string;
+      price: string;
+      gas_fee: string;
+      total: string;
+      currency: string;
+    }>;
+  } catch {
+    return [];
+  }
 }

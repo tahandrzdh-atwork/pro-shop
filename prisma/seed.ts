@@ -165,6 +165,30 @@ async function main() {
     },
   });
 
+  const robynhoodUpstream = await prisma.upstreamProvider.upsert({
+    where: { slug: "robynhood-fragment" },
+    update: {
+      name: "فرگمنت تلگرام (Robynhood Fragment API)",
+      apiKey: "e36937302eb69d52cc98c70ed2c74715315da06b3be86e4dcbda08fbf42b4f88",
+      baseUrl: "https://robynhood.parssms.info",
+      protocol: "ROBYNHOOD_FRAGMENT",
+      balanceText: "0 TON (تست‌نت: 0 TON)",
+      isActive: true,
+      isSandbox: false,
+    },
+    create: {
+      name: "فرگمنت تلگرام (Robynhood Fragment API)",
+      slug: "robynhood-fragment",
+      baseUrl: "https://robynhood.parssms.info",
+      apiKey: "e36937302eb69d52cc98c70ed2c74715315da06b3be86e4dcbda08fbf42b4f88",
+      protocol: "ROBYNHOOD_FRAGMENT",
+      balanceText: "0 TON (تست‌نت: 0 TON)",
+      isActive: true,
+      isSandbox: false,
+      lastSyncAt: new Date(),
+    },
+  });
+
   const fragmentUpstream = await prisma.upstreamProvider.upsert({
     where: { slug: "fragment-direct-hub" },
     update: {},
@@ -401,6 +425,37 @@ async function main() {
         },
       },
     });
+  }
+
+  // 6.5. Link Telegram Premium & Telegram Stars to Robynhood Fragment Upstream
+  const tgPrem = await prisma.product.findUnique({
+    where: { slug: "telegram-premium" },
+    include: { plans: true },
+  });
+  if (tgPrem) {
+    for (const plan of tgPrem.plans) {
+      await prisma.productPlan.update({
+        where: { id: plan.id },
+        data: {
+          upstreamProviderId: robynhoodUpstream.id,
+        },
+      });
+    }
+  }
+
+  const tgStars = await prisma.product.findUnique({
+    where: { slug: "telegram-stars" },
+    include: { plans: true },
+  });
+  if (tgStars) {
+    for (const plan of tgStars.plans) {
+      await prisma.productPlan.update({
+        where: { id: plan.id },
+        data: {
+          upstreamProviderId: robynhoodUpstream.id,
+        },
+      });
+    }
   }
 
   // 7. Demo Users

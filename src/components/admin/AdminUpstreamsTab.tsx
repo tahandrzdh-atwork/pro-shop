@@ -144,7 +144,7 @@ export function AdminUpstreamsTab() {
             className="rounded-xl border border-border bg-surface-2 px-3 py-2 text-sm"
           >
             <option value="SMM_PANEL">SMM Panel Standard (v2)</option>
-            <option value="FRAGMENT_API">Fragment Direct REST</option>
+            <option value="ROBYNHOOD_FRAGMENT">فرگمنت رسمی تلگرام (Robynhood Fragment TON)</option>
             <option value="OZVINOO_CALLINOO">کالینو / اوزوینو شماره مجازی (Callinoo / Ozvinoo)</option>
             <option value="ALTIVOX_AI">التووکس پارتنر هوش مصنوعی (Altivox AI Partner)</option>
             <option value="CUSTOM_REST">Custom Bearer JSON REST</option>
