@@ -181,6 +181,11 @@ model OrderItem {
   fulfillmentStatus    String            @default("PENDING") // PENDING | PROCESSING | DELIVERED | FAILED
   upstreamOrderId      String?
   upstreamResponseJson String?
+  virtualNumber        String?
+  virtualCountry       String?
+  virtualSmsCode       String?
+  virtualRequestId     String?
+  virtualStatus        String? // WAITING_CODE | CODE_RECEIVED | CANCELED | EXPIRED
   expiresAt            DateTime?
   reminderSent         Boolean           @default(false)
   createdAt            DateTime          @default(now())
@@ -206,7 +211,7 @@ model UpstreamProvider {
   slug        String           @unique
   baseUrl     String
   apiKey      String
-  protocol    String           @default("SMM_PANEL") // SMM_PANEL | FRAGMENT_API | CUSTOM_REST
+  protocol    String           @default("SMM_PANEL") // SMM_PANEL | FRAGMENT_API | CUSTOM_REST | OZVINOO_CALLINOO | ALTIVOX_AI
   balanceText String?
   isActive    Boolean          @default(true)
   isSandbox   Boolean          @default(true)

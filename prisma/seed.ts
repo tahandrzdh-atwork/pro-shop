@@ -16,9 +16,9 @@ async function main() {
       siteNameFa: "دیجی‌ساب",
       siteNameEn: "DigiSub",
       heroNoticeFa:
-        "تحویل آنی تلگرام پرمیوم، استارز و اشتراک‌های هوش مصنوعی با اتصال مستقیم API",
+        "تحویل آنی تلگرام پرمیوم، استارز، شماره مجازی و اشتراک‌های هوش مصنوعی با اتصال مستقیم API",
       heroNoticeEn:
-        "Instant delivery for Telegram Premium, Stars & AI subscriptions via direct API",
+        "Instant delivery for Telegram Premium, Stars, Virtual Numbers & AI subscriptions via direct API",
       pointsPer10kToman: 5,
       referralBonusPoints: 100,
     },
@@ -119,6 +119,52 @@ async function main() {
   }
 
   // 4. Upstream Mother Servers
+  const callinooUpstream = await prisma.upstreamProvider.upsert({
+    where: { slug: "callinoo-virtual-numbers" },
+    update: {
+      apiKey: "1314004723:FZv5lUYEmEDuyjOW78nz6v1NVJ2cbVb7F7Kee0x7xIxD",
+      baseUrl: "https://api.ozvinoo.xyz",
+      protocol: "OZVINOO_CALLINOO",
+      balanceText: "1,000 تومان",
+      isActive: true,
+      isSandbox: false,
+    },
+    create: {
+      name: "کالینو — سامانه شماره مجازی (Callinoo API)",
+      slug: "callinoo-virtual-numbers",
+      baseUrl: "https://api.ozvinoo.xyz",
+      apiKey: "1314004723:FZv5lUYEmEDuyjOW78nz6v1NVJ2cbVb7F7Kee0x7xIxD",
+      protocol: "OZVINOO_CALLINOO",
+      balanceText: "1,000 تومان",
+      isActive: true,
+      isSandbox: false,
+      lastSyncAt: new Date(),
+    },
+  });
+
+  const altivoxUpstream = await prisma.upstreamProvider.upsert({
+    where: { slug: "altivox-ai" },
+    update: {
+      apiKey: "isk_ff27d94a9db4fa3b10bc49e98e5c0ca7b7655776d9ae5dc8",
+      baseUrl: "https://api.altivoxai.com/api/v1",
+      protocol: "ALTIVOX_AI",
+      balanceText: "0 VND",
+      isActive: true,
+      isSandbox: false,
+    },
+    create: {
+      name: "Altivox AI Partner API",
+      slug: "altivox-ai",
+      baseUrl: "https://api.altivoxai.com/api/v1",
+      apiKey: "isk_ff27d94a9db4fa3b10bc49e98e5c0ca7b7655776d9ae5dc8",
+      protocol: "ALTIVOX_AI",
+      balanceText: "0 VND",
+      isActive: true,
+      isSandbox: false,
+      lastSyncAt: new Date(),
+    },
+  });
+
   const fragmentUpstream = await prisma.upstreamProvider.upsert({
     where: { slug: "fragment-direct-hub" },
     update: {},
@@ -166,6 +212,20 @@ async function main() {
     },
   });
 
+  const catVirtualNumber = await prisma.category.upsert({
+    where: { slug: "virtual-numbers" },
+    update: {},
+    create: {
+      slug: "virtual-numbers",
+      nameFa: "شماره مجازی",
+      nameEn: "Virtual Numbers",
+      descriptionFa: "خرید شماره مجازی تلگرام و اپلیکیشن‌ها با تحویل فوری کد پیامک",
+      descriptionEn: "Instant Telegram & app virtual numbers with real-time SMS codes",
+      icon: "PhoneCall",
+      sortOrder: 2,
+    },
+  });
+
   const catAi = await prisma.category.upsert({
     where: { slug: "ai" },
     update: {},
@@ -173,10 +233,10 @@ async function main() {
       slug: "ai",
       nameFa: "هوش مصنوعی",
       nameEn: "AI Subscriptions",
-      descriptionFa: "اشتراک‌های ChatGPT Plus، Claude Pro و Cursor Pro",
-      descriptionEn: "ChatGPT Plus, Claude Pro & Cursor Pro developer accounts",
+      descriptionFa: "اشتراک‌های ChatGPT Plus، Claude Pro و Gemini Pro",
+      descriptionEn: "ChatGPT Plus, Claude Pro & Gemini Pro developer accounts",
       icon: "Bot",
-      sortOrder: 2,
+      sortOrder: 3,
     },
   });
 
@@ -190,410 +250,152 @@ async function main() {
       descriptionFa: "اسپاتیفای پرمیوم، نتفلیکس 4K و یوتیوب پرمیوم",
       descriptionEn: "Spotify Premium, Netflix 4K & YouTube Premium",
       icon: "Music",
-      sortOrder: 3,
+      sortOrder: 4,
     },
   });
 
-  // 6. Products & Plans & Vault
-  const existingProducts = await prisma.product.count();
-  if (existingProducts === 0) {
-    // Product 1: Telegram Premium (Upstream API)
+  // 6. Ensure Virtual Numbers & Altivox Gemini Pro products exist
+  const existingVirt = await prisma.product.findUnique({
+    where: { slug: "telegram-virtual-number" },
+  });
+  if (!existingVirt) {
     await prisma.product.create({
       data: {
-        slug: "telegram-premium",
-        categoryId: catTelegram.id,
-        titleFa: "تلگرام پرمیوم (تحویل آنی بدون لاگین)",
-        titleEn: "Telegram Premium (Instant Gift API)",
-        shortDescFa: "فعال‌سازی رسمی و قانونی روی آیدی بدون نیاز به رمز و لاگین",
-        shortDescEn: "Official activation via username without login credentials",
+        slug: "telegram-virtual-number",
+        categoryId: catVirtualNumber.id,
+        titleFa: "شماره مجازی تلگرام (دریافت آنی کد پیامک)",
+        titleEn: "Telegram Virtual Number (Instant SMS OTP)",
+        shortDescFa: "شماره اختصاصی برای ساخت و تایید اکانت تلگرام با دریافت آنی پیامک کد ورود",
+        shortDescEn: "Dedicated phone number for Telegram activation with instant SMS code delivery",
         descriptionFa:
-          "اشتراک رسمی تلگرام پرمیوم از طریق درگاه مستقیم Fragment روی آیدی تلگرام شما فعال می‌شود. بدون نیاز به دسترسی به اکانت، کاملاً آنی و همراه با گارانتی کامل.",
+          "شماره مجازی معتبر بین‌المللی متصل مستقیم به وب‌سرویس کالینو. بلافاصله پس از پرداخت، شماره در پنل شما فعال می‌شود و به مدت ۲۰ دقیقه منتظر دریافت پیامک کد تایید می‌ماند. در صورت عدم دریافت کد، مبلغ کامل به کیف پول شما بازگردانده می‌شود.",
         descriptionEn:
-          "Official Telegram Premium subscription gifted directly to your username via Fragment API. Zero account access required, instant delivery, full warranty.",
+          "Official virtual number directly integrated with Callinoo API. Number is assigned immediately with live SMS code reception and instant auto-refund guarantee.",
         guideFa:
-          "۱. آیدی تلگرام خود را بدون علامت @ وارد کنید.\n۲. مطمئن شوید اکانت شما دارای Username عمومی است.\n۳. بلافاصله پس از پرداخت، سفارش به سرور مادر ارسال و فعال می‌شود.",
+          "۱. پس از خرید، شماره را کپی کرده و در اپلیکیشن تلگرام وارد کنید.\n۲. دکمه «دریافت کد پیامک» را در سفارش‌های من بزنید تا کد ورود استخراج و نمایش داده شود.\n۳. تا زمان دریافت کد پیامک، امکان لغو و بازگشت کامل وجه وجود دارد.",
         guideEn:
-          "1. Enter your Telegram username without @.\n2. Ensure your account has an active public username.\n3. Activation triggers automatically via upstream API right after checkout.",
+          "1. Copy the assigned number and enter it into Telegram.\n2. Click 'Check SMS Code' in your orders dashboard.\n3. Zero risk: cancel anytime before receiving the code for a full refund.",
         deliveryType: "UPSTREAM_API",
-        badgeFa: "تکمیل خودکار API",
-        badgeEn: "Auto API",
-        accentColor: "#0ea5e9",
+        badgeFa: "کالینو API",
+        badgeEn: "Callinoo API",
+        accentColor: "#3b82f6",
         isFeatured: true,
-        salesCount: 418,
+        salesCount: 520,
         inputFieldsJson: JSON.stringify([
           {
-            key: "telegramUsername",
-            labelFa: "آیدی تلگرام (بدون @)",
-            labelEn: "Telegram Username (without @)",
-            placeholderFa: "مثال: ali_developer",
-            placeholderEn: "e.g. ali_developer",
+            key: "country",
+            labelFa: "پیش‌شماره یا نام کشور",
+            labelEn: "Country Range or Name",
+            placeholderFa: "مثال: 48 یا لهستان",
+            placeholderEn: "e.g. 48 or Poland",
             required: true,
           },
         ]),
         plans: {
           create: [
             {
-              titleFa: "اشتراک ۳ ماهه پرمیوم",
-              titleEn: "3 Months Premium",
-              durationDays: 90,
-              priceToman: 890000,
-              priceUsd: 13.0,
-              useUsdRate: true,
-              pointsReward: 60,
-              upstreamProviderId: fragmentUpstream.id,
-              upstreamServiceId: "tg_prem_3m",
-              upstreamQuantity: 1,
+              titleFa: "لهستان 🇵🇱 (پیش‌شماره ۴۸)",
+              titleEn: "Poland 🇵🇱 (+48)",
+              durationDays: 1,
+              priceToman: 68000,
+              pointsReward: 10,
+              upstreamProviderId: callinooUpstream.id,
+              upstreamServiceId: "1",
               sortOrder: 1,
             },
             {
-              titleFa: "اشتراک ۶ ماهه پرمیوم",
-              titleEn: "6 Months Premium",
-              durationDays: 180,
-              priceToman: 1350000,
-              priceUsd: 19.5,
-              useUsdRate: true,
-              pointsReward: 110,
-              upstreamProviderId: fragmentUpstream.id,
-              upstreamServiceId: "tg_prem_6m",
-              upstreamQuantity: 1,
+              titleFa: "کلمبیا 🇨🇴 (پیش‌شماره ۵۷)",
+              titleEn: "Colombia 🇨🇴 (+57)",
+              durationDays: 1,
+              priceToman: 75000,
+              pointsReward: 12,
+              upstreamProviderId: callinooUpstream.id,
+              upstreamServiceId: "1",
               sortOrder: 2,
             },
             {
-              titleFa: "اشتراک ۱۲ ماهه پرمیوم",
-              titleEn: "12 Months Premium",
-              durationDays: 365,
-              priceToman: 2390000,
-              priceUsd: 34.5,
-              useUsdRate: true,
-              pointsReward: 220,
-              upstreamProviderId: fragmentUpstream.id,
-              upstreamServiceId: "tg_prem_12m",
-              upstreamQuantity: 1,
-              sortOrder: 3,
-            },
-          ],
-        },
-      },
-    });
-
-    // Product 2: Telegram Stars (Upstream API)
-    await prisma.product.create({
-      data: {
-        slug: "telegram-stars",
-        categoryId: catTelegram.id,
-        titleFa: "تلگرام استارز (Telegram Stars)",
-        titleEn: "Telegram Stars (Instant Top-up)",
-        shortDescFa: "شارژ آنی ستاره تلگرام برای ربات‌ها، مینی‌اپ‌ها و گیفت‌ها",
-        shortDescEn: "Instant Telegram Stars delivery for bots, mini-apps & gifts",
-        descriptionFa:
-          "خرید تلگرام استارز با کمترین کارمزد و تحویل لحظه‌ای روی آیدی تلگرام شما توسط موتور خودکار API.",
-        descriptionEn:
-          "Purchase Telegram Stars at competitive rates with instant delivery directly to your Telegram handle.",
-        guideFa: "فقط آیدی تلگرام خود را وارد کنید؛ استارز ظرف چند ثانیه واریز می‌شود.",
-        guideEn: "Provide your Telegram username; Stars arrive within seconds.",
-        deliveryType: "UPSTREAM_API",
-        badgeFa: "تحویل آنی",
-        badgeEn: "Instant",
-        accentColor: "#f59e0b",
-        isFeatured: true,
-        salesCount: 625,
-        inputFieldsJson: JSON.stringify([
-          {
-            key: "telegramUsername",
-            labelFa: "آیدی تلگرام دریافت‌کننده",
-            labelEn: "Recipient Telegram Username",
-            placeholderFa: "مثال: sara_design",
-            placeholderEn: "e.g. sara_design",
-            required: true,
-          },
-        ]),
-        plans: {
-          create: [
-            {
-              titleFa: "۱۰۰ استارز تلگرام",
-              titleEn: "100 Telegram Stars",
-              priceToman: 165000,
-              priceUsd: 2.4,
-              useUsdRate: true,
+              titleFa: "بنگلادش 🇧🇩 (پیش‌شماره ۸۸۰)",
+              titleEn: "Bangladesh 🇧🇩 (+880)",
+              durationDays: 1,
+              priceToman: 85000,
               pointsReward: 15,
-              upstreamProviderId: fragmentUpstream.id,
-              upstreamServiceId: "tg_stars_100",
-              upstreamQuantity: 100,
-              sortOrder: 1,
-            },
-            {
-              titleFa: "۵۰۰ استارز تلگرام",
-              titleEn: "500 Telegram Stars",
-              priceToman: 740000,
-              priceUsd: 10.8,
-              useUsdRate: true,
-              pointsReward: 55,
-              upstreamProviderId: fragmentUpstream.id,
-              upstreamServiceId: "tg_stars_500",
-              upstreamQuantity: 500,
-              sortOrder: 2,
-            },
-            {
-              titleFa: "۱۰۰۰ استارز تلگرام",
-              titleEn: "1,000 Telegram Stars",
-              priceToman: 1420000,
-              priceUsd: 20.5,
-              useUsdRate: true,
-              pointsReward: 120,
-              upstreamProviderId: fragmentUpstream.id,
-              upstreamServiceId: "tg_stars_1000",
-              upstreamQuantity: 1000,
+              upstreamProviderId: callinooUpstream.id,
+              upstreamServiceId: "1",
               sortOrder: 3,
             },
+            {
+              titleFa: "فیلیپین 🇵🇭 (پیش‌شماره ۶۳)",
+              titleEn: "Philippines 🇵🇭 (+63)",
+              durationDays: 1,
+              priceToman: 55000,
+              pointsReward: 8,
+              upstreamProviderId: callinooUpstream.id,
+              upstreamServiceId: "1",
+              sortOrder: 4,
+            },
+            {
+              titleFa: "انگلستان 🇬🇧 (پیش‌شماره ۴۴)",
+              titleEn: "United Kingdom 🇬🇧 (+44)",
+              durationDays: 1,
+              priceToman: 95000,
+              pointsReward: 18,
+              upstreamProviderId: callinooUpstream.id,
+              upstreamServiceId: "1",
+              sortOrder: 5,
+            },
           ],
         },
       },
     });
+  }
 
-    // Product 3: Telegram Channel Boost (Upstream SMM API)
+  const existingAlti = await prisma.product.findUnique({
+    where: { slug: "gemini-pro-18m" },
+  });
+  if (!existingAlti) {
     await prisma.product.create({
       data: {
-        slug: "telegram-boost",
-        categoryId: catTelegram.id,
-        titleFa: "بوست کانال تلگرام (Telegram Boost)",
-        titleEn: "Telegram Channel Boost",
-        shortDescFa: "افزایش لول کانال، فعال‌سازی استوری و ایموجی‌های اختصاصی",
-        shortDescEn: "Unlock channel stories, custom reactions and higher levels",
+        slug: "gemini-pro-18m",
+        categoryId: catAi.id,
+        titleFa: "اشتراک Gemini Pro (۱۸ ماهه اختصاصی)",
+        titleEn: "Gemini Pro 18 Months Subscription",
+        shortDescFa: "دسترسی پیشرفته به مدل‌های برتر گوگل با فعال‌سازی از سورس Altivox",
+        shortDescEn: "Advanced Google Gemini Pro 18-month plan via Altivox Partner API",
         descriptionFa:
-          "بوست کانال تلگرام با سرورهای پرسرعت و بدون ریزش، متصل به پنل مادر برای شروع خودکار بلافاصله بعد از پرداخت.",
+          "اکانت و دسترسی ۱۸ ماهه به قابلیت‌های ویژه هوش مصنوعی Gemini Pro گوگل متصل به درگاه سورس بین‌المللی Altivox با فعال‌سازی مطمئن و تضمین دوره.",
         descriptionEn:
-          "High-retention Telegram Channel Boosts connected directly to our upstream fulfillment panel.",
-        guideFa: "لینک بوست کانال (https://t.me/boost/yourchannel) را وارد کنید.",
-        guideEn: "Paste your channel boost link (https://t.me/boost/yourchannel).",
+          "18-month dedicated subscription for Google Gemini Pro powered by Altivox AI Internal Source.",
+        guideFa: "سفارش شما بلافاصله پس از پرداخت به API ارسال شده و فعال‌سازی انجام می‌گردد.",
+        guideEn: "Order dispatches to the upstream API instantly upon checkout.",
         deliveryType: "UPSTREAM_API",
-        badgeFa: "سرور مادر API",
-        badgeEn: "Upstream API",
-        accentColor: "#ec4899",
-        isFeatured: false,
-        salesCount: 194,
-        inputFieldsJson: JSON.stringify([
-          {
-            key: "targetUrl",
-            labelFa: "لینک بوست کانال",
-            labelEn: "Channel Boost Link",
-            placeholderFa: "https://t.me/boost/channel",
-            placeholderEn: "https://t.me/boost/channel",
-            required: true,
-          },
-        ]),
-        plans: {
-          create: [
-            {
-              titleFa: "۱۰ بوست (۱ ماهه)",
-              titleEn: "10 Boosts (30 Days)",
-              durationDays: 30,
-              priceToman: 320000,
-              pointsReward: 25,
-              upstreamProviderId: smmUpstream.id,
-              upstreamServiceId: "401",
-              upstreamQuantity: 10,
-              sortOrder: 1,
-            },
-            {
-              titleFa: "۲۵ بوست (۱ ماهه)",
-              titleEn: "25 Boosts (30 Days)",
-              durationDays: 30,
-              priceToman: 740000,
-              pointsReward: 60,
-              upstreamProviderId: smmUpstream.id,
-              upstreamServiceId: "402",
-              upstreamQuantity: 25,
-              sortOrder: 2,
-            },
-          ],
-        },
-      },
-    });
-
-    // Product 4: ChatGPT Plus (Vault Instant Delivery)
-    const chatgpt = await prisma.product.create({
-      data: {
-        slug: "chatgpt-plus",
-        categoryId: catAi.id,
-        titleFa: "اکانت اختصاصی ChatGPT Plus",
-        titleEn: "ChatGPT Plus Dedicated Account",
-        shortDescFa: "دسترسی کامل به مدل‌های GPT-4o / o1 با تحویل آنی از انبار امن",
-        shortDescEn: "Full GPT-4o / o1 access with instant encrypted vault delivery",
-        descriptionFa:
-          "اکانت کاملاً اختصاصی ChatGPT Plus با ایمیل و رمز قابل تغییر. مشخصات ورود بلافاصله بعد از پرداخت در پنل کاربری شما آزاد می‌شود.",
-        descriptionEn:
-          "Private ChatGPT Plus account with full email access. Credentials are released immediately in your user panel upon checkout.",
-        guideFa:
-          "پس از پرداخت وارد بخش «سفارش‌های من» شوید و مشخصات ایمیل و رمز اکانت را کپی کنید.",
-        guideEn:
-          "Open 'My Orders' after payment to copy your account credentials securely.",
-        deliveryType: "VAULT",
-        badgeFa: "تحویل آنی انبار",
-        badgeEn: "Instant Vault",
-        accentColor: "#10b981",
+        badgeFa: "Altivox AI",
+        badgeEn: "Altivox API",
+        accentColor: "#4f46e5",
         isFeatured: true,
-        salesCount: 389,
-        inputFieldsJson: JSON.stringify([]),
-        plans: {
-          create: [
-            {
-              titleFa: "اشتراک ۱ ماهه اختصاصی",
-              titleEn: "1 Month Private Account",
-              durationDays: 30,
-              priceToman: 1450000,
-              priceUsd: 21.0,
-              useUsdRate: true,
-              pointsReward: 100,
-              sortOrder: 1,
-            },
-            {
-              titleFa: "اشتراک ۳ ماهه اختصاصی",
-              titleEn: "3 Months Private Account",
-              durationDays: 90,
-              priceToman: 4100000,
-              priceUsd: 59.5,
-              useUsdRate: true,
-              pointsReward: 280,
-              sortOrder: 2,
-            },
-          ],
-        },
-      },
-      include: { plans: true },
-    });
-
-    // Seed Vault credentials for ChatGPT Plus
-    await prisma.digitalVaultItem.createMany({
-      data: [
-        {
-          planId: chatgpt.plans[0].id,
-          secretPayload: "Email: gpt.pro.101@digisub.mail | Pass: Dg$9921Ax! | 2FA: Ready",
-          note: "Batch #1 - Private",
-        },
-        {
-          planId: chatgpt.plans[0].id,
-          secretPayload: "Email: gpt.pro.102@digisub.mail | Pass: Dg$4418Kz! | 2FA: Ready",
-          note: "Batch #1 - Private",
-        },
-        {
-          planId: chatgpt.plans[1].id,
-          secretPayload: "Email: gpt.qtr.201@digisub.mail | Pass: Dg$7781Qm! | 2FA: Ready",
-          note: "3-Month Batch",
-        },
-      ],
-    });
-
-    // Product 5: Claude Pro (Vault Instant Delivery)
-    const claude = await prisma.product.create({
-      data: {
-        slug: "claude-pro",
-        categoryId: catAi.id,
-        titleFa: "اشتراک Claude Pro (Anthropic)",
-        titleEn: "Claude Pro Subscription",
-        shortDescFa: "اکانت اختصاصی Claude Pro برای برنامه‌نویسان و تولید محتوا",
-        shortDescEn: "Dedicated Claude Pro account for coding, writing & deep analysis",
-        descriptionFa:
-          "دسترسی نامحدودتر به مدل‌های پیشرفته Claude Sonnet و Opus همراه با پروژه‌ها و آرتیفکت‌ها، تحویل آنی و ضمانت تمام مدت.",
-        descriptionEn:
-          "Priority access to Claude models, Projects, and Artifacts with instant vault delivery.",
-        guideFa: "اطلاعات لاگین بلافاصله پس از تکمیل پرداخت در پنل شما نمایش داده می‌شود.",
-        guideEn: "Credentials appear instantly in your dashboard upon payment.",
-        deliveryType: "VAULT",
-        badgeFa: "مخصوص برنامه‌نویسان",
-        badgeEn: "Dev Favorite",
-        accentColor: "#f97316",
-        isFeatured: true,
-        salesCount: 247,
-        inputFieldsJson: JSON.stringify([]),
-        plans: {
-          create: [
-            {
-              titleFa: "اشتراک ۱ ماهه Claude Pro",
-              titleEn: "1 Month Claude Pro",
-              durationDays: 30,
-              priceToman: 1490000,
-              priceUsd: 21.5,
-              useUsdRate: true,
-              pointsReward: 105,
-              sortOrder: 1,
-            },
-          ],
-        },
-      },
-      include: { plans: true },
-    });
-
-    await prisma.digitalVaultItem.createMany({
-      data: [
-        {
-          planId: claude.plans[0].id,
-          secretPayload: "Email: claude.dev.01@digisub.mail | Pass: Cl$8832Mn! | Region: US",
-          note: "Claude Batch #1",
-        },
-        {
-          planId: claude.plans[0].id,
-          secretPayload: "Email: claude.dev.02@digisub.mail | Pass: Cl$5510Xp! | Region: US",
-          note: "Claude Batch #1",
-        },
-      ],
-    });
-
-    // Product 6: Spotify Premium (Manual Concierge)
-    await prisma.product.create({
-      data: {
-        slug: "spotify-premium",
-        categoryId: catStreaming.id,
-        titleFa: "اسپاتیفای پرمیوم (روی اکانت شخصی)",
-        titleEn: "Spotify Premium (Personal Account)",
-        shortDescFa: "فعال‌سازی قانونی پلن Individual روی ایمیل فعلی شما بدون حذف پلی‌لیست",
-        shortDescEn: "Official Individual upgrade on your existing email keeping all playlists",
-        descriptionFa:
-          "اکانت شخصی اسپاتیفای شما بدون از دست رفتن پلی‌لیست‌ها به نسخه پرمیوم ارتقا پیدا می‌کند. کیفیت صدای بالا و دانلود آفلاین نامحدود.",
-        descriptionEn:
-          "Upgrade your personal Spotify account to Premium while preserving all playlists and saved tracks.",
-        guideFa: "ایمیل اکانت اسپاتیفای خود را وارد کنید تا لینک دعوت خانواده/فعال‌سازی ارسال شود.",
-        guideEn: "Provide your Spotify account email for official activation.",
-        deliveryType: "MANUAL",
-        badgeFa: "روی اکانت شخصی",
-        badgeEn: "Personal Upgrade",
-        accentColor: "#22c55e",
-        isFeatured: true,
-        salesCount: 312,
+        salesCount: 182,
         inputFieldsJson: JSON.stringify([
           {
             key: "email",
-            labelFa: "ایمیل اکانت اسپاتیفای",
-            labelEn: "Spotify Account Email",
-            placeholderFa: "name@example.com",
-            placeholderEn: "name@example.com",
-            required: true,
+            labelFa: "ایمیل جیمیل کاربر",
+            labelEn: "Customer Gmail Address",
+            placeholderFa: "yourname@gmail.com",
+            placeholderEn: "yourname@gmail.com",
+            required: false,
           },
         ]),
         plans: {
           create: [
             {
-              titleFa: "اشتراک ۱ ماهه",
-              titleEn: "1 Month Individual",
-              durationDays: 30,
-              priceToman: 245000,
-              pointsReward: 20,
+              titleFa: "اشتراک ۱۸ ماهه Gemini Pro",
+              titleEn: "18 Months Gemini Pro",
+              durationDays: 540,
+              priceToman: 790000,
+              priceUsd: 11.5,
+              useUsdRate: true,
+              pointsReward: 120,
+              upstreamProviderId: altivoxUpstream.id,
+              upstreamServiceId: "cmw6cvyfl1kjtcav04k64m906",
               sortOrder: 1,
-            },
-            {
-              titleFa: "اشتراک ۳ ماهه",
-              titleEn: "3 Months Individual",
-              durationDays: 90,
-              priceToman: 680000,
-              pointsReward: 55,
-              sortOrder: 2,
-            },
-            {
-              titleFa: "اشتراک ۱۲ ماهه",
-              titleEn: "12 Months Individual",
-              durationDays: 365,
-              priceToman: 2290000,
-              pointsReward: 190,
-              sortOrder: 3,
             },
           ],
         },
@@ -607,8 +409,8 @@ async function main() {
     update: {},
     create: {
       phone: "09120000001",
-      name: "امیرحسین رضایی (ادمین)",
-      email: "admin@digisub.ir",
+      name: "طه نادرزاده (ادمین)",
+      email: "tahandrzdh.official@gmail.com",
       role: "ADMIN",
       walletBalance: 5000000,
       loyaltyPoints: 1850,
@@ -633,24 +435,6 @@ async function main() {
       referralCode: "DSSARA22",
       tagsJson: JSON.stringify(["VIP", "خریدار AI", "خریدار پرمیوم"]),
       lastPurchaseAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    },
-  });
-
-  const expiringUser = await prisma.user.upsert({
-    where: { phone: "09197778899" },
-    update: {},
-    create: {
-      phone: "09197778899",
-      name: "نیما حسینی",
-      email: "nima@example.com",
-      role: "USER",
-      walletBalance: 320000,
-      loyaltyPoints: 420,
-      totalSpent: 2150000,
-      referralCode: "DSNIMA88",
-      referredById: vipUser.id,
-      tagsJson: JSON.stringify(["تلگرام پرمیوم", "در آستانه تمدید"]),
-      lastPurchaseAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
     },
   });
 
@@ -683,169 +467,7 @@ async function main() {
     },
   });
 
-  // 9. Sample Orders, CRM Notes & Tickets (idempotent check)
-  const existingOrders = await prisma.order.count();
-  if (existingOrders === 0) {
-    const firstPlan = await prisma.productPlan.findFirst({
-      include: { product: true },
-    });
-
-    if (firstPlan) {
-      const sampleOrder1 = await prisma.order.create({
-        data: {
-          orderNumber: "DS-10421",
-          userId: vipUser.id,
-          status: "COMPLETED",
-          paymentMethod: "WALLET",
-          paymentStatus: "PAID",
-          subtotalToman: 1450000,
-          tierDiscountToman: 116000,
-          totalToman: 1334000,
-          pointsEarned: 100,
-          gatewayRef: "WLT-88412",
-          createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-          items: {
-            create: {
-              planId: firstPlan.id,
-              productTitleFa: firstPlan.product.titleFa,
-              productTitleEn: firstPlan.product.titleEn,
-              planTitleFa: firstPlan.titleFa,
-              planTitleEn: firstPlan.titleEn,
-              quantity: 1,
-              unitPriceToman: 1450000,
-              totalPriceToman: 1450000,
-              deliveryType: firstPlan.product.deliveryType,
-              customerInputsJson: JSON.stringify({ telegramUsername: "sara_design" }),
-              deliveredSecret:
-                "Activated automatically for sara_design via Fragment Direct Hub (#UP-994120)",
-              fulfillmentStatus: "DELIVERED",
-              upstreamOrderId: "UP-994120",
-              expiresAt: new Date(Date.now() + 87 * 24 * 60 * 60 * 1000),
-            },
-          },
-        },
-      });
-
-      // Expiring soon order for CRM reminder demonstration
-      await prisma.order.create({
-        data: {
-          orderNumber: "DS-10388",
-          userId: expiringUser.id,
-          status: "COMPLETED",
-          paymentMethod: "GATEWAY",
-          paymentStatus: "PAID",
-          subtotalToman: 890000,
-          totalToman: 890000,
-          pointsEarned: 60,
-          gatewayRef: "ZP-773190",
-          createdAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
-          items: {
-            create: {
-              planId: firstPlan.id,
-              productTitleFa: firstPlan.product.titleFa,
-              productTitleEn: firstPlan.product.titleEn,
-              planTitleFa: firstPlan.titleFa,
-              planTitleEn: firstPlan.titleEn,
-              quantity: 1,
-              unitPriceToman: 890000,
-              totalPriceToman: 890000,
-              deliveryType: firstPlan.product.deliveryType,
-              customerInputsJson: JSON.stringify({ telegramUsername: "nima_h" }),
-              deliveredSecret:
-                "Activated automatically for nima_h via Fragment Direct Hub (#UP-882011)",
-              fulfillmentStatus: "DELIVERED",
-              upstreamOrderId: "UP-882011",
-              expiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-            },
-          },
-        },
-      });
-
-      await prisma.walletTransaction.createMany({
-        data: [
-          {
-            userId: vipUser.id,
-            amount: 2800000,
-            type: "DEPOSIT",
-            descriptionFa: "شارژ کیف پول از طریق درگاه آنلاین",
-            descriptionEn: "Wallet top-up via online payment gateway",
-          },
-          {
-            userId: vipUser.id,
-            amount: -1334000,
-            type: "PURCHASE",
-            descriptionFa: `پرداخت سفارش ${sampleOrder1.orderNumber}`,
-            descriptionEn: `Payment for order ${sampleOrder1.orderNumber}`,
-            referenceId: sampleOrder1.id,
-          },
-          {
-            userId: vipUser.id,
-            amount: 80040,
-            type: "CASHBACK",
-            descriptionFa: "کش‌بک سطح الماسی (۶٪) بابت سفارش DS-10421",
-            descriptionEn: "Diamond VIP Cashback (6%) for order DS-10421",
-            referenceId: sampleOrder1.id,
-          },
-        ],
-      });
-
-      await prisma.crmNote.create({
-        data: {
-          userId: vipUser.id,
-          authorId: adminUser.id,
-          content: "مشتری وفادار و خریدار همیشگی ابزارهای هوش مصنوعی؛ پیشنهاد تخفیف تمدید ارسال شود.",
-        },
-      });
-
-      await prisma.ticket.create({
-        data: {
-          ticketNumber: "TK-4012",
-          userId: vipUser.id,
-          orderId: sampleOrder1.id,
-          subject: "سوال درباره تمدید خودکار پلن ChatGPT Plus",
-          category: "ORDER",
-          priority: "NORMAL",
-          status: "ANSWERED",
-          messages: {
-            create: [
-              {
-                senderId: vipUser.id,
-                isAdmin: false,
-                body: "سلام، می‌خواستم بپرسم برای ماه بعد همین اکانت تمدید می‌شه یا اکانت جدید تحویل می‌دید؟",
-              },
-              {
-                senderId: adminUser.id,
-                isAdmin: true,
-                body: "سلام سارا خانم عزیز! بله با ثبت سفارش روی همین ایمیل می‌تونیم اشتراک شما رو بدون تغییر داده‌ها تمدید کنیم.",
-              },
-            ],
-          },
-        },
-      });
-
-      await prisma.upstreamApiLog.create({
-        data: {
-          providerId: fragmentUpstream.id,
-          action: "SUBMIT_ORDER",
-          requestPayload: JSON.stringify({
-            serviceId: "tg_prem_3m",
-            recipient: "sara_design",
-            quantity: 1,
-          }),
-          responseBody: JSON.stringify({
-            ok: true,
-            order: "UP-994120",
-            status: "Completed",
-          }),
-          httpStatus: 200,
-          success: true,
-          durationMs: 145,
-        },
-      });
-    }
-  }
-
-  console.log("Seed completed successfully!");
+  console.log("Seed completed successfully with Callinoo & Altivox AI providers!");
 }
 
 main()

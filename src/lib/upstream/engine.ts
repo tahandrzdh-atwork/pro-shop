@@ -8,6 +8,9 @@ export interface UpstreamDispatchResult {
   deliveredSecret?: string;
   status: "DELIVERED" | "PROCESSING" | "FAILED";
   rawResponse: string;
+  virtualNumber?: string;
+  virtualCountry?: string;
+  virtualRequestId?: string;
 }
 
 export async function dispatchToUpstreamProvider(params: {
@@ -31,12 +34,197 @@ export async function dispatchToUpstreamProvider(params: {
 
   const startedAt = Date.now();
   const targetInput =
+    params.customerInputs.country ??
     params.customerInputs.telegramUsername ??
     params.customerInputs.targetUrl ??
     params.customerInputs.email ??
     Object.values(params.customerInputs)[0] ??
-    "unknown";
+    "48";
 
+  // 1. CALLINOO / OZVINOO VIRTUAL NUMBERS
+  if (provider.protocol === "OZVINOO_CALLINOO") {
+    const serviceId = params.serviceId || "1";
+    const country = encodeURIComponent(targetInput.trim() || "48");
+    const endpoint = `${provider.baseUrl.replace(/\/$/, "")}/web/${provider.apiKey}/getNumber/${serviceId}/${country}`;
+
+    if (provider.isSandbox) {
+      const fakeReqId = `242${Math.floor(100000 + Math.random() * 900000)}`;
+      const fakeNum = `+48459${Math.floor(100000 + Math.random() * 900000)}`;
+      const simResp = {
+        number: fakeNum,
+        request_id: fakeReqId,
+        price: 75000,
+        country: targetInput,
+        range: 48,
+        service: "تلگرام (پنل کالینو)",
+      };
+      await prisma.upstreamApiLog.create({
+        data: {
+          providerId: provider.id,
+          orderItemId: params.orderItemId,
+          action: "GET_VIRTUAL_NUMBER",
+          requestPayload: JSON.stringify({ serviceId, country }),
+          responseBody: JSON.stringify(simResp),
+          httpStatus: 200,
+          success: true,
+          durationMs: 45,
+        },
+      });
+      return {
+        success: true,
+        upstreamOrderId: fakeReqId,
+        virtualNumber: fakeNum,
+        virtualRequestId: fakeReqId,
+        virtualCountry: targetInput,
+        deliveredSecret: `شماره مجازی: ${fakeNum} (در انتظار پیامک کد تایید)`,
+        status: "PROCESSING",
+        rawResponse: JSON.stringify(simResp),
+      };
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "GET",
+        headers: { "User-Agent": "Mozilla/5.0 (DigiSub Platform)" },
+      });
+      const text = await res.text();
+      const durationMs = Date.now() - startedAt;
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = { raw: text };
+      }
+
+      const ok = res.ok && !parsed.error_code && !parsed.error && !!parsed.number;
+      const num = parsed.number ? String(parsed.number) : undefined;
+      const reqId = parsed.request_id ? String(parsed.request_id) : undefined;
+      const cName = parsed.country || parsed.countery ? String(parsed.country || parsed.countery) : targetInput;
+
+      await prisma.upstreamApiLog.create({
+        data: {
+          providerId: provider.id,
+          orderItemId: params.orderItemId,
+          action: "GET_VIRTUAL_NUMBER",
+          requestPayload: JSON.stringify({ serviceId, country }),
+          responseBody: text.slice(0, 4000),
+          httpStatus: res.status,
+          success: ok,
+          durationMs,
+        },
+      });
+
+      if (ok && num && reqId) {
+        return {
+          success: true,
+          upstreamOrderId: reqId,
+          virtualNumber: num,
+          virtualRequestId: reqId,
+          virtualCountry: cName,
+          deliveredSecret: `شماره دریافت شد: ${num} | در انتظار کد پیامک...`,
+          status: "PROCESSING",
+          rawResponse: text.slice(0, 4000),
+        };
+      }
+
+      return {
+        success: false,
+        status: "FAILED",
+        rawResponse: text.slice(0, 4000),
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Callinoo error";
+      return {
+        success: false,
+        status: "FAILED",
+        rawResponse: JSON.stringify({ error: msg }),
+      };
+    }
+  }
+
+  // 2. ALTIVOX AI PARTNER API
+  if (provider.protocol === "ALTIVOX_AI") {
+    const endpoint = `${provider.baseUrl.replace(/\/$/, "")}/internal-source/v1/orders`;
+    const payload = {
+      productId: params.serviceId,
+      quantity: params.quantity,
+      clientOrderCode: params.orderItemId,
+      customerEmail: params.customerInputs.email || undefined,
+    };
+
+    if (provider.isSandbox) {
+      const fakeCode = `ALTI-${Date.now().toString().slice(-6)}`;
+      const simResp = {
+        success: true,
+        orderCode: fakeCode,
+        status: "DELIVERED",
+        credentials: "Email: altivox.user@ai.dev | License: Ready",
+      };
+      return {
+        success: true,
+        upstreamOrderId: fakeCode,
+        deliveredSecret: simResp.credentials,
+        status: "DELIVERED",
+        rawResponse: JSON.stringify(simResp),
+      };
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Source-Api-Key": provider.apiKey,
+          "User-Agent": "DigiSub/1.0",
+        },
+        body: JSON.stringify(payload),
+      });
+      const text = await res.text();
+      const durationMs = Date.now() - startedAt;
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = { raw: text };
+      }
+
+      const ok = res.ok && parsed.success === true;
+      const orderCode =
+        parsed.orderCode || parsed.code || (parsed.order as Record<string, unknown>)?.code || `ALTI-${params.orderItemId.slice(-6)}`;
+
+      await prisma.upstreamApiLog.create({
+        data: {
+          providerId: provider.id,
+          orderItemId: params.orderItemId,
+          action: "ALTIVOX_ORDER",
+          requestPayload: JSON.stringify(payload),
+          responseBody: text.slice(0, 4000),
+          httpStatus: res.status,
+          success: ok,
+          durationMs,
+        },
+      });
+
+      return {
+        success: ok,
+        upstreamOrderId: String(orderCode),
+        deliveredSecret: ok
+          ? `سفارش در Altivox AI ثبت شد (شناسه: ${orderCode})`
+          : undefined,
+        status: ok ? "PROCESSING" : "FAILED",
+        rawResponse: text.slice(0, 4000),
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Altivox error";
+      return {
+        success: false,
+        status: "FAILED",
+        rawResponse: JSON.stringify({ error: msg }),
+      };
+    }
+  }
+
+  // 3. SMM PANEL & GENERIC REST
   const requestBody =
     provider.protocol === "SMM_PANEL"
       ? {
@@ -196,6 +384,84 @@ export async function testUpstreamConnection(providerId: string) {
 
   const startedAt = Date.now();
 
+  // 1. OZVINOO / CALLINOO
+  if (provider.protocol === "OZVINOO_CALLINOO") {
+    try {
+      const url = `${provider.baseUrl.replace(/\/$/, "")}/web/${provider.apiKey}/get-balance`;
+      const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+      const data = await res.json();
+      const ok = res.ok && data.balance !== undefined;
+      const balance = ok ? `${Number(data.balance).toLocaleString("fa-IR")} تومان` : "خطا در دریافت موجودی";
+
+      if (ok) {
+        await prisma.upstreamProvider.update({
+          where: { id: provider.id },
+          data: { balanceText: balance, lastSyncAt: new Date() },
+        });
+      }
+
+      await prisma.upstreamApiLog.create({
+        data: {
+          providerId: provider.id,
+          action: "TEST_CONNECTION",
+          requestPayload: JSON.stringify({ url }),
+          responseBody: JSON.stringify(data),
+          httpStatus: res.status,
+          success: ok,
+          durationMs: Date.now() - startedAt,
+        },
+      });
+
+      return { ok, balance, raw: JSON.stringify(data) };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Callinoo error";
+      return { ok: false, message: msg };
+    }
+  }
+
+  // 2. ALTIVOX AI
+  if (provider.protocol === "ALTIVOX_AI") {
+    try {
+      const url = `${provider.baseUrl.replace(/\/$/, "")}/internal-source/v1/balance`;
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": "DigiSub/1.0",
+          "X-Source-Api-Key": provider.apiKey,
+        },
+      });
+      const data = await res.json();
+      const ok = res.ok && data.success === true;
+      const balance = ok
+        ? `${Number(data.balance ?? 0).toLocaleString()} ${data.currency ?? "VND"}`
+        : "Failed to read balance";
+
+      if (ok) {
+        await prisma.upstreamProvider.update({
+          where: { id: provider.id },
+          data: { balanceText: balance, lastSyncAt: new Date() },
+        });
+      }
+
+      await prisma.upstreamApiLog.create({
+        data: {
+          providerId: provider.id,
+          action: "TEST_CONNECTION",
+          requestPayload: JSON.stringify({ url }),
+          responseBody: JSON.stringify(data),
+          httpStatus: res.status,
+          success: ok,
+          durationMs: Date.now() - startedAt,
+        },
+      });
+
+      return { ok, balance, raw: JSON.stringify(data) };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Altivox connection error";
+      return { ok: false, message: msg };
+    }
+  }
+
+  // 3. Fallback Sandbox / SMM Panel
   if (provider.isSandbox) {
     const balance = "$428.50 (Sandbox)";
     await prisma.upstreamProvider.update({
@@ -282,6 +548,153 @@ export async function testUpstreamConnection(providerId: string) {
     });
     return { ok: false, message: msg };
   }
+}
+
+// Check virtual number SMS OTP code from Callinoo
+export async function pollCallinooCode(orderItemId: string) {
+  const item = await prisma.orderItem.findUnique({
+    where: { id: orderItemId },
+    include: {
+      plan: { include: { upstreamProvider: true } },
+      order: { include: { user: true } },
+    },
+  });
+
+  if (!item || !item.virtualRequestId || !item.plan.upstreamProvider) {
+    return { ok: false, error: "Order item or virtual number request not found" };
+  }
+
+  const provider = item.plan.upstreamProvider;
+  if (provider.isSandbox) {
+    const fakeCode = "74192";
+    await prisma.orderItem.update({
+      where: { id: item.id },
+      data: {
+        virtualSmsCode: fakeCode,
+        virtualStatus: "CODE_RECEIVED",
+        fulfillmentStatus: "DELIVERED",
+        deliveredSecret: `شماره: ${item.virtualNumber} | کد تایید پیامک: ${fakeCode}`,
+      },
+    });
+    await prisma.order.update({
+      where: { id: item.orderId },
+      data: { status: "COMPLETED" },
+    });
+    return { ok: true, code: fakeCode, status: "CODE_RECEIVED" };
+  }
+
+  const url = `${provider.baseUrl.replace(/\/$/, "")}/web/${provider.apiKey}/getCode/${item.virtualRequestId}`;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    const data = await res.json();
+
+    if (data.code) {
+      const code = String(data.code);
+      await prisma.orderItem.update({
+        where: { id: item.id },
+        data: {
+          virtualSmsCode: code,
+          virtualStatus: "CODE_RECEIVED",
+          fulfillmentStatus: "DELIVERED",
+          deliveredSecret: `شماره: ${item.virtualNumber} | کد تایید پیامک: ${code}`,
+        },
+      });
+
+      // Update parent order
+      await prisma.order.update({
+        where: { id: item.orderId },
+        data: { status: "COMPLETED" },
+      });
+
+      // Notify customer
+      await prisma.notification.create({
+        data: {
+          userId: item.order.userId,
+          titleFa: `کد پیامک شماره مجازی دریافت شد: ${code}`,
+          titleEn: `Virtual Number SMS Code Received: ${code}`,
+          bodyFa: `کد تایید شماره ${item.virtualNumber}: ${code}`,
+          bodyEn: `Verification code for ${item.virtualNumber}: ${code}`,
+        },
+      });
+
+      await sendSms({
+        phone: item.order.user.phone,
+        templateType: "ORDER_COMPLETE",
+        message: `کد تایید شماره مجازی شما: ${code} | دیجی‌ساب`,
+        patternValues: { code },
+      });
+
+      return { ok: true, code, status: "CODE_RECEIVED" };
+    }
+
+    if (data.error_code === "wait_code") {
+      return { ok: true, status: "WAITING_CODE", message: "Still waiting for SMS..." };
+    }
+
+    if (data.error_code === "canceled") {
+      await prisma.orderItem.update({
+        where: { id: item.id },
+        data: { virtualStatus: "CANCELED", fulfillmentStatus: "FAILED" },
+      });
+      return { ok: false, status: "CANCELED", error: "Order canceled" };
+    }
+
+    return { ok: false, status: "PENDING", raw: data };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Polling failed" };
+  }
+}
+
+// Cancel virtual number order & refund user wallet
+export async function cancelVirtualNumberOrder(orderItemId: string) {
+  const item = await prisma.orderItem.findUnique({
+    where: { id: orderItemId },
+    include: {
+      plan: { include: { upstreamProvider: true } },
+      order: true,
+    },
+  });
+
+  if (!item || !item.virtualRequestId || !item.plan.upstreamProvider) {
+    return { ok: false, error: "Not found" };
+  }
+
+  if (item.virtualStatus === "CODE_RECEIVED") {
+    return { ok: false, error: "کد تایید دریافت شده و سفارش قابل لغو نیست." };
+  }
+
+  const provider = item.plan.upstreamProvider;
+  if (!provider.isSandbox) {
+    try {
+      const url = `${provider.baseUrl.replace(/\/$/, "")}/web/${provider.apiKey}/logout/${item.virtualRequestId}`;
+      await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    } catch {
+      // ignore upstream logout errors
+    }
+  }
+
+  await prisma.$transaction([
+    prisma.orderItem.update({
+      where: { id: item.id },
+      data: { virtualStatus: "CANCELED", fulfillmentStatus: "FAILED" },
+    }),
+    prisma.user.update({
+      where: { id: item.order.userId },
+      data: { walletBalance: { increment: item.totalPriceToman } },
+    }),
+    prisma.walletTransaction.create({
+      data: {
+        userId: item.order.userId,
+        amount: item.totalPriceToman,
+        type: "REFUND",
+        descriptionFa: `بازگشت وجه لغو شماره مجازی ${item.virtualNumber ?? ""}`,
+        descriptionEn: `Refund for canceled virtual number ${item.virtualNumber ?? ""}`,
+        referenceId: item.id,
+      },
+    }),
+  ]);
+
+  return { ok: true, refundedToman: item.totalPriceToman };
 }
 
 export async function fulfillOrderAfterPayment(orderId: string) {
@@ -380,6 +793,10 @@ export async function fulfillOrderAfterPayment(orderId: string) {
           upstreamOrderId: dispatch.upstreamOrderId ?? null,
           upstreamResponseJson: dispatch.rawResponse,
           deliveredSecret: dispatch.deliveredSecret ?? null,
+          virtualNumber: dispatch.virtualNumber ?? null,
+          virtualCountry: dispatch.virtualCountry ?? null,
+          virtualRequestId: dispatch.virtualRequestId ?? null,
+          virtualStatus: dispatch.virtualNumber ? "WAITING_CODE" : null,
           expiresAt,
         },
       });

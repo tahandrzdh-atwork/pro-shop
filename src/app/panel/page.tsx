@@ -16,6 +16,10 @@ import {
   EyeOff,
   PlusCircle,
   Bell,
+  Smartphone,
+  RefreshCw,
+  AlertCircle,
+  PhoneCall,
 } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import { formatCurrency, formatDate, formatDateTime, formatNumber } from "@/lib/i18n";
@@ -76,6 +80,11 @@ interface DashboardData {
       deliveredSecret: string | null;
       expiresAt: string | null;
       customerInputsJson: string;
+      virtualNumber?: string | null;
+      virtualCountry?: string | null;
+      virtualSmsCode?: string | null;
+      virtualRequestId?: string | null;
+      virtualStatus?: string | null;
     }>;
   }>;
   transactions: Array<{
@@ -129,6 +138,8 @@ function UserPanelContent() {
   const [profileName, setProfileName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [checkingVirtualId, setCheckingVirtualId] = useState<string | null>(null);
+  const [cancelingVirtualId, setCancelingVirtualId] = useState<string | null>(null);
 
   useEffect(() => {
     const paramTab = searchParams.get("tab") as TabKey | null;
@@ -149,6 +160,20 @@ function UserPanelContent() {
       setLoading(false);
     }
   }, []);
+
+  // Auto-refresh when any virtual number is waiting for SMS
+  useEffect(() => {
+    if (!data) return;
+    const hasWaitingNumber = data.orders.some((order) =>
+      order.items.some((item) => item.virtualStatus === "WAITING_CODE")
+    );
+    if (!hasWaitingNumber) return;
+
+    const interval = setInterval(() => {
+      fetchDashboard();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [data, fetchDashboard]);
 
   useEffect(() => {
     if (authUser) {
@@ -240,6 +265,76 @@ function UserPanelContent() {
       setFeedback(locale === "fa" ? "پروفایل ذخیره شد." : "Profile saved.");
       await refreshUser();
       await fetchDashboard();
+    }
+  };
+
+  const handleCheckVirtualCode = async (orderItemId: string) => {
+    setCheckingVirtualId(orderItemId);
+    setFeedback("");
+    try {
+      const res = await fetch("/api/virtual-numbers/check-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderItemId }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        if (json.code) {
+          setFeedback(
+            locale === "fa"
+              ? `✅ کد پیامک دریافت شد: ${json.code}`
+              : `✅ SMS code received: ${json.code}`
+          );
+        } else {
+          setFeedback(
+            locale === "fa"
+              ? "⏳ هنوز کدی از سمت سرویس دریافت نشده است. لطفاً ۳۰ ثانیه دیگر مجدداً تست کنید."
+              : "⏳ No code received yet. Please re-check in 30 seconds."
+          );
+        }
+        await fetchDashboard();
+      } else {
+        setFeedback(json.error || "خطا در استعلام پیامک");
+      }
+    } catch (err: any) {
+      setFeedback(err?.message || "خطای ارتباط با سرور");
+    } finally {
+      setCheckingVirtualId(null);
+    }
+  };
+
+  const handleCancelVirtualNumber = async (orderItemId: string) => {
+    const confirmed = window.confirm(
+      locale === "fa"
+        ? "آیا از لغو شماره مجازی اطمینان دارید؟ مبلغ به کیف پول شما برگشت داده می‌شود."
+        : "Are you sure you want to cancel this number? The amount will be refunded to your wallet."
+    );
+    if (!confirmed) return;
+
+    setCancelingVirtualId(orderItemId);
+    setFeedback("");
+    try {
+      const res = await fetch("/api/virtual-numbers/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderItemId }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setFeedback(
+          locale === "fa"
+            ? `شماره لغو شد و ${formatCurrency(json.refundToman, locale)} به کیف پول بازگشت.`
+            : `Canceled! ${formatCurrency(json.refundToman, locale)} refunded to wallet.`
+        );
+        await refreshUser();
+        await fetchDashboard();
+      } else {
+        setFeedback(json.error || "خطا در لغو شماره");
+      }
+    } catch (err: any) {
+      setFeedback(err?.message || "خطای ارتباط با سرور");
+    } finally {
+      setCancelingVirtualId(null);
     }
   };
 
@@ -486,6 +581,133 @@ function UserPanelContent() {
                             <pre className="whitespace-pre-wrap break-all font-mono text-xs text-text">
                               {isRevealed ? item.deliveredSecret : "••••••••••••••••••••••••••••"}
                             </pre>
+                          </div>
+                        )}
+
+                        {/* Virtual Number Real-Time Card */}
+                        {(item.virtualNumber || item.virtualRequestId || item.virtualStatus) && (
+                          <div className="mt-3 rounded-2xl border border-indigo-500/25 bg-gradient-to-br from-indigo-500/5 via-surface to-indigo-500/10 p-4 space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2.5">
+                              <div className="flex items-center gap-2">
+                                <Smartphone className="h-4 w-4 text-brand" />
+                                <span className="text-xs font-bold text-text">
+                                  {locale === "fa" ? "سرویس شماره مجازی اختصاصی" : "Virtual Number Service"}
+                                </span>
+                                {item.virtualCountry && (
+                                  <span className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-[11px] font-semibold text-muted">
+                                    {item.virtualCountry}
+                                  </span>
+                                )}
+                              </div>
+
+                              <span
+                                className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                                  item.virtualStatus === "CODE_RECEIVED"
+                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                    : item.virtualStatus === "CANCELED"
+                                    ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                                    : "bg-amber-500/15 text-amber-600 dark:text-amber-400 animate-pulse"
+                                }`}
+                              >
+                                {item.virtualStatus === "CODE_RECEIVED"
+                                  ? (locale === "fa" ? "کد پیامک دریافت شد" : "Code Received")
+                                  : item.virtualStatus === "CANCELED"
+                                  ? (locale === "fa" ? "لغو شده و عودت وجه" : "Canceled & Refunded")
+                                  : (locale === "fa" ? "در انتظار پیامک..." : "Waiting for SMS...")}
+                              </span>
+                            </div>
+
+                            {/* Number Row */}
+                            {item.virtualNumber && (
+                              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface-2/80 p-3">
+                                <div>
+                                  <span className="text-[11px] text-muted block mb-0.5">
+                                    {locale === "fa" ? "شماره اختصاص داده شده:" : "Assigned Phone Number:"}
+                                  </span>
+                                  <span dir="ltr" className="font-mono text-base font-extrabold text-brand tracking-wider">
+                                    {item.virtualNumber}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => copyText(`num-${item.id}`, item.virtualNumber!)}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-surface border border-border px-3 py-1.5 text-xs font-semibold text-text shadow-sm hover:border-brand"
+                                >
+                                  {copiedId === `num-${item.id}` ? (
+                                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                                  ) : (
+                                    <Copy className="h-3.5 w-3.5" />
+                                  )}
+                                  {copiedId === `num-${item.id}`
+                                    ? (locale === "fa" ? "شماره کپی شد" : "Copied")
+                                    : (locale === "fa" ? "کپی شماره" : "Copy Number")}
+                                </button>
+                              </div>
+                            )}
+
+                            {/* SMS Code Box if Code Received */}
+                            {item.virtualSmsCode && (
+                              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center space-y-2">
+                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">
+                                  {locale === "fa" ? "کد تایید پیامک (OTP):" : "SMS Verification Code (OTP):"}
+                                </span>
+                                <div className="flex items-center justify-center gap-3">
+                                  <span dir="ltr" className="font-mono text-3xl font-black tracking-widest text-emerald-600 dark:text-emerald-400 bg-surface/80 rounded-xl px-5 py-2 border border-emerald-500/20 shadow-inner">
+                                    {item.virtualSmsCode}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyText(`code-${item.id}`, item.virtualSmsCode!)}
+                                    className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-emerald-700"
+                                  >
+                                    {copiedId === `code-${item.id}` ? (
+                                      <Check className="h-4 w-4" />
+                                    ) : (
+                                      <Copy className="h-4 w-4" />
+                                    )}
+                                    {copiedId === `code-${item.id}`
+                                      ? (locale === "fa" ? "کپی شد" : "Copied")
+                                      : (locale === "fa" ? "کپی کد" : "Copy Code")}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Action Buttons for Waiting status */}
+                            {item.virtualStatus === "WAITING_CODE" && (
+                              <div className="space-y-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={checkingVirtualId === item.id}
+                                    onClick={() => handleCheckVirtualCode(item.id)}
+                                    className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+                                  >
+                                    <RefreshCw className={`h-3.5 w-3.5 ${checkingVirtualId === item.id ? "animate-spin" : ""}`} />
+                                    {checkingVirtualId === item.id
+                                      ? (locale === "fa" ? "در حال استعلام..." : "Checking...")
+                                      : (locale === "fa" ? "استعلام و دریافت کد پیامک" : "Check for SMS Code")}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={cancelingVirtualId === item.id}
+                                    onClick={() => handleCancelVirtualNumber(item.id)}
+                                    className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2 text-xs font-bold text-rose-600 hover:bg-rose-500/20 disabled:opacity-50"
+                                  >
+                                    {cancelingVirtualId === item.id
+                                      ? (locale === "fa" ? "در حال لغو..." : "Canceling...")
+                                      : (locale === "fa" ? "لغو شماره و بازگشت وجه" : "Cancel & Refund")}
+                                  </button>
+                                </div>
+
+                                <p className="text-[11px] text-muted leading-relaxed">
+                                  {locale === "fa"
+                                    ? "💡 شماره را در تلگرام وارد کنید و درخواست پیامک بزنید. پس از ارسال، دکمه «استعلام و دریافت کد» را بزنید. در صورت عدم دریافت پیامک می‌توانید شماره را لغو کنید تا هزینه به کیف پول شما بازگردد."
+                                    : "💡 Enter this number in Telegram and request SMS. Then click 'Check for SMS Code'. If no code arrives, you can cancel to receive a full refund."}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
