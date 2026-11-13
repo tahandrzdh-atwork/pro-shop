@@ -359,3 +359,30 @@ model SiteSetting {
   referralBonusPoints Int      @default(100)
   updatedAt           DateTime @updatedAt
 }
+
+model Article {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  title             String
+  content           String
+  excerpt           String?
+  coverImage        String?
+  author            String   @default("تیم تحریریه دیجی‌ساب")
+  category          String   @default("آموزش و مقالات")
+  readingTimeMin    Int      @default(5)
+  published         Boolean  @default(true)
+  views             Int      @default(0)
+
+  // Advanced SEO & Snippet Metadata
+  seoTitle          String?
+  seoDescription    String?
+  focusKeyword      String?
+  secondaryKeywords String?
+  canonicalUrl      String?
+  schemaType        String   @default("Article")
+  faqItemsJson      String?
+  seoScore          Int      @default(85)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

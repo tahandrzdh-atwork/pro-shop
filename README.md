@@ -34,6 +34,20 @@ A full-stack, bilingual (**Persian RTL / English LTR**, user-selectable) e-comme
 - **Customer Club**: Tier progression (**Bronze → Silver → Gold → Diamond VIP**) unlocking automatic checkout discounts and wallet cashback, referral rewards, and point-to-wallet redemption.
 - **360° CRM**: Customer LTV tracking, custom tagging, internal agent notes, wallet adjustments, **7-day Subscription Expiry Watchlist** with one-click renewal SMS reminders, and segmented SMS/In-App campaigns.
 
+### 📝 Advanced Article Publishing & SEO Engine (Rank Math + GEO 2026)
+- **Content & Article Publisher:**
+  - H1, H2, H3 heading formatting with natural search query phrasing.
+  - Interactive comparison tables & data matrices (boosting Google Featured Snippets).
+  - Internal linking graph pointing to store products (`/product/telegram-premium`, etc.).
+  - Breadcrumb navigation, reading time, view counters, and related articles cards.
+- **Rank Math / Yoast Style Live SEO Audit (0-100 Score):**
+  - Real-time audit checklist assessing focus keyword placement (Title, Meta Description, URL Slug, Intro, H2/H3 Headings, Content Density).
+  - Optimal length meters (SEO Title under 60 chars / Meta Description 130-158 chars).
+- **Google SERP Snippet Preview:**
+  - Live Desktop & Mobile Google search preview with blue link, breadcrumbs, and meta description.
+- **Rich Structured Data (Schema JSON-LD):**
+  - Native `Article`, `BreadcrumbList`, and `FAQPage` schema markup for Google Rich Snippets and AI conversational search engines (Perplexity, ChatGPT, Gemini, Claude).
+
 ---
 
 ## 🛠️ Tech Stack

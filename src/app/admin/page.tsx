@@ -11,6 +11,7 @@ import {
   MessageSquareCode,
   Settings,
   ShieldAlert,
+  FileText,
 } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import { AdminOverviewTab } from "@/components/admin/AdminOverviewTab";
@@ -20,11 +21,13 @@ import { AdminUpstreamsTab } from "@/components/admin/AdminUpstreamsTab";
 import { AdminSmsTab } from "@/components/admin/AdminSmsTab";
 import { AdminCrmTab } from "@/components/admin/AdminCrmTab";
 import { AdminSettingsTab } from "@/components/admin/AdminSettingsTab";
+import { AdminArticlesTab } from "@/components/admin/AdminArticlesTab";
 
 type AdminTab =
   | "overview"
   | "orders"
   | "products"
+  | "articles"
   | "upstreams"
   | "crm"
   | "sms"
@@ -66,6 +69,7 @@ export default function AdminDashboardPage() {
     { key: "overview", label: t.adminPanel.overview, icon: BarChart3 },
     { key: "orders", label: t.adminPanel.orders, icon: ShoppingCart },
     { key: "products", label: t.adminPanel.products, icon: Package },
+    { key: "articles", label: locale === "fa" ? "مقالات و سئو" : "Articles & SEO", icon: FileText },
     { key: "upstreams", label: t.adminPanel.upstreams, icon: Server },
     { key: "crm", label: t.adminPanel.crm, icon: Users },
     { key: "sms", label: t.adminPanel.sms, icon: MessageSquareCode },
@@ -109,6 +113,7 @@ export default function AdminDashboardPage() {
           {tab === "overview" && <AdminOverviewTab />}
           {tab === "orders" && <AdminOrdersTab />}
           {tab === "products" && <AdminProductsTab />}
+          {tab === "articles" && <AdminArticlesTab />}
           {tab === "upstreams" && <AdminUpstreamsTab />}
           {tab === "crm" && <AdminCrmTab />}
           {tab === "sms" && <AdminSmsTab />}
